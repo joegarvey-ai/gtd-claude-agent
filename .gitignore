@@ -1,0 +1,18 @@
+# Real config file (contains credentials — never commit this)
+claude_desktop_config.json
+
+# Local config overrides
+*.json.local
+
+# Environment files
+.env
+
+# OAuth tokens and credentials
+token.json
+credentials.json
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
