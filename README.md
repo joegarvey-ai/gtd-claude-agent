@@ -1,6 +1,6 @@
 # GTD Claude Agent
 
-A personal AI assistant that lives in Claude Desktop, knows your task system, and connects to your real tools — Google Drive, Gmail, Calendar, GitHub, and Obsidian.
+A personal AI assistant that lives in Claude Desktop, knows your task system, and connects to your real tools — Gmail, Calendar, and Obsidian.
 
 Built on [GTD (Getting Things Done)](https://gettingthingsdone.com/) principles: capture everything, clarify what it means, organize it where it belongs, reflect regularly, and engage with confidence.
 
@@ -26,8 +26,6 @@ Once set up, Claude becomes a personal assistant that understands your task syst
 - **Processes your inbox** — Reads captures in Obsidian and routes them to the right folder (Next Actions, Projects, Someday Maybe, etc.)
 - **Manages email** — Triages your Gmail inbox, drafts replies, and flags what needs attention
 - **Handles your calendar** — Checks upcoming events, finds free time, and creates new events
-- **Works with your documents** — Reads and writes to Google Drive docs and spreadsheets
-- **Interacts with GitHub** — Creates issues, reads repos, and helps manage development work
 - **Runs weekly reviews** — Walks through your whole system to make sure nothing is slipping through the cracks
 
 ---
@@ -36,12 +34,11 @@ Once set up, Claude becomes a personal assistant that understands your task syst
 
 | Tool | What it is | Cost |
 |------|-----------|------|
-| [Claude Pro or Max](https://claude.ai/upgrade) | The AI subscription that powers everything | Paid |
-| [Claude Desktop](https://claude.ai/download) | The app Claude runs in on your Mac | Free |
-| [Obsidian](https://obsidian.md/) | A note-taking app that stores files locally (iCloud sync recommended) | Free |
-| Google account | For Gmail, Calendar, and Drive access | Free |
-| GitHub account | For repo and issue management | Free |
-| [Node.js](https://nodejs.org/) | Required to run some MCP connections (just install it, you won't need to write code) | Free |
+| [Claude Pro or Max](https://claude.ai/upgrade) | The AI subscription that powers everything | $20/month |
+| [Claude Desktop](https://claude.ai/download) | The app Claude runs in on your computer (Mac or Windows) | Free |
+| [Obsidian](https://obsidian.md/) | A note-taking app that stores files locally — your GTD home base | Free |
+
+> **Beginner vs. Advanced:** The setup guides below get you running with Obsidian + Gmail + Calendar. For additional connections (Google Drive, GitHub, Slack), see [docs/advanced-connectors.md](docs/advanced-connectors.md).
 
 ---
 
@@ -49,12 +46,11 @@ Once set up, Claude becomes a personal assistant that understands your task syst
 
 | Claude handles | You handle |
 |---------------|-----------|
-| Reading and writing notes in your Obsidian vault | Setting up MCP connections (one-time, guided below) |
-| Drafting emails and sorting your inbox | Creating OAuth credentials for Google (one-time) |
-| Routing tasks to the right GTD folder | Reviewing drafts before Claude sends anything |
-| Surfacing what's due, stale, or forgotten | Approving any action that posts, sends, or deletes |
-| Running weekly reviews across all your tools | Deciding your priorities — Claude helps, you choose |
-| Reading and summarizing documents | Maintaining your Obsidian vault structure |
+| Reading and writing notes in your Obsidian vault | Following the setup guide (one-time, about 30 minutes) |
+| Drafting emails and sorting your inbox | Reviewing drafts before Claude sends anything |
+| Routing tasks to the right GTD folder | Approving any action that posts, sends, or deletes |
+| Surfacing what's due, stale, or forgotten | Deciding your priorities — Claude helps, you choose |
+| Running weekly reviews across all your tools | Maintaining your Obsidian vault structure |
 
 **The key rule: Claude proposes, you approve.** Nothing gets sent, posted, or deleted without your say-so.
 
@@ -62,7 +58,15 @@ Once set up, Claude becomes a personal assistant that understands your task syst
 
 ## Getting started
 
-Follow the step-by-step guide in **[SETUP.md](SETUP.md)** — it walks through everything from installing Claude Desktop to running your first prompt.
+### Choose your setup guide
+
+Follow the guide for your computer. No coding experience required — just downloading apps and copying text.
+
+🍎 **Mac users →** [SETUP-MAC.md](SETUP-MAC.md)
+
+🪟 **Windows users →** [SETUP-WINDOWS.md](SETUP-WINDOWS.md)
+
+If you run into problems, check the [Troubleshooting Guide](TROUBLESHOOTING.md).
 
 ---
 

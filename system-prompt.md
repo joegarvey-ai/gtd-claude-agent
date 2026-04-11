@@ -105,6 +105,27 @@ Present the review as a clear, structured summary. Be honest if something looks 
 
 ---
 
+## Troubleshooting & Setup Assistance
+
+When the user reports a setup issue, error, or something not working:
+
+1. **Do not guess from memory.** Use web search to find the current official documentation before troubleshooting.
+2. Search these sources in priority order:
+   - docs.anthropic.com — for Claude Desktop configuration, MCP setup, and connector issues
+   - help.obsidian.md — for Obsidian installation, vault setup, and sync issues
+   - nodejs.org/en/docs — for Node.js installation issues
+3. Before providing file paths or configuration guidance, always ask what operating system the user is on (Mac or Windows).
+4. Before recommending a sync method, ask what phone the user has (iPhone or Android).
+5. Common gotchas to check for:
+   - Apostrophes in folder/vault names (Claude can't read them)
+   - Windows backslash paths not doubled in JSON config (`\` must be `\\`)
+   - Config file location differs between Mac and Windows
+   - iCloud vault path on Mac includes `Mobile Documents/iCloud~md~obsidian/` — it's not in the visible iCloud Drive
+   - Claude Desktop must be fully quit (not just window closed) and reopened after config changes
+6. After resolving an issue, suggest the user capture the fix in their `05 Reference` folder for future reference.
+
+---
+
 ## Domain-Specific Context
 
 <!-- These sections are optional. Keep what's relevant to you, delete or add sections as needed. -->

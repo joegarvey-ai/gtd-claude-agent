@@ -1,5 +1,7 @@
 # Obsidian Setup
 
+> **Note:** For step-by-step installation and vault creation, see [SETUP-MAC.md](../SETUP-MAC.md) or [SETUP-WINDOWS.md](../SETUP-WINDOWS.md). For syncing across devices, see [obsidian-sync-options.md](obsidian-sync-options.md). This page covers Obsidian concepts and the folder structure in more detail.
+
 ## What Obsidian is
 
 [Obsidian](https://obsidian.md/) is a free note-taking app that stores everything as plain text files on your computer. Unlike cloud-based apps, your notes live in a regular folder on your Mac — which is exactly what makes it perfect for this setup.
@@ -66,22 +68,9 @@ Notes about key people you interact with. This is where you create your own pers
 
 ---
 
-## Setting up iCloud sync
+## Syncing across devices
 
-iCloud sync lets your Obsidian vault stay up to date across your Mac, iPhone, and iPad.
-
-**On your Mac:**
-When creating a new vault in Obsidian, choose to store it inside your iCloud Drive folder. Obsidian will handle the rest.
-
-If you already have a vault and want to move it to iCloud, see [Obsidian's sync documentation](https://help.obsidian.md/Getting+started/Sync+your+notes+across+devices) for detailed instructions.
-
-**Where iCloud vaults live on your Mac:**
-Your vault will be at a path like:
-```
-/Users/[YOUR_USERNAME]/Library/Mobile Documents/iCloud~md~obsidian/Documents/[YOUR_VAULT_NAME]
-```
-
-This is the path you'll use in the Claude Desktop config file.
+For detailed sync setup instructions (iCloud, Obsidian Sync, Remotely Save, and more), see **[obsidian-sync-options.md](obsidian-sync-options.md)**.
 
 ---
 
@@ -89,7 +78,7 @@ This is the path you'll use in the Claude Desktop config file.
 
 Claude connects to your Obsidian vault through something called a "filesystem MCP server." In plain English: you tell Claude Desktop where your vault folder is, and Claude can then read and write files in it — like a very smart note-taking assistant.
 
-This connection is set up in your `claude_desktop_config.json` file (covered in [SETUP.md](../SETUP.md)). The relevant part looks like this:
+This connection is set up in your `claude_desktop_config.json` file (covered in [SETUP-MAC.md](../SETUP-MAC.md) or [SETUP-WINDOWS.md](../SETUP-WINDOWS.md)). The relevant part looks like this:
 
 ```json
 "obsidian": {
