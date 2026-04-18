@@ -12,6 +12,8 @@ This is an open-source starter kit for building your own AI-powered personal ass
 
 MCP is what lets Claude talk to your actual tools — read your notes, check your calendar, draft emails, and more. Think of it as giving Claude hands instead of just a brain.
 
+![gtd-claude-agent architecture](docs/images/architecture.svg)
+
 You get:
 - A ready-to-use system prompt built around GTD methodology
 - Configuration files to connect Claude to your tools
@@ -56,6 +58,17 @@ Once set up, Claude becomes a personal assistant that understands your task syst
 
 ---
 
+## Companion projects
+
+`gtd-claude-agent` is part of a small set of Claude + MCP projects I've open-sourced. They share the same design idea: plain-text or plain-data outputs you own, read by Claude through MCP.
+
+- **[platemath](https://github.com/joegarvey-ai/platemath)** — automated health data pipeline for lifters. Pulls nutrition from Cronometer and sleep/activity from Apple Watch (via Apple Health) into an Obsidian vault as clean markdown. Claude reads the vault through the Obsidian MCP to answer questions about macros, recovery, and training readiness.
+- **[SpendSense](https://github.com/joegarvey-ai/spendsense)** — personal finance intelligence layer. Syncs bank transactions via SimpleFIN Bridge, categorizes them with regex rules, writes an Excel dashboard with SUMIFS formulas, sends a weekly Monday Money Brief email digest, and tracks investments with live market data from yfinance.
+
+If you like the approach in `gtd-claude-agent`, these are the same pattern applied to different domains.
+
+---
+
 ## Getting started
 
 ### Choose your setup guide
@@ -74,12 +87,7 @@ If you run into problems, check the [Troubleshooting Guide](TROUBLESHOOTING.md).
 
 **Joe Garvey** — Head of Developer Technology
 
-This repo is part of a broader personal productivity stack that also includes:
-
-- **[SpendSense](https://github.com/joegarvey-ai/spendsense)** — Self-hosted personal finance automation
-- **PlateMatch** — Workout tracking and recomposition analytics *(coming soon)*
-
-Both are independently useful and can be integrated with this assistant.
+See [Companion projects](#companion-projects) above for the rest of the stack.
 
 ---
 
