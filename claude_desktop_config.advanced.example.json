@@ -1,32 +1,19 @@
-// Advanced configuration — includes Obsidian + Google Drive
-//
-// NOTE: Gmail, Google Calendar, and GitHub are NOT configured in this file.
-// They use Claude Desktop's built-in Connectors instead.
-// See docs/gmail-calendar-github-setup.md for how to set those up.
-//
-// This file configures MCP servers that require local setup:
-// - Obsidian (via filesystem access)
-// - Google Drive (via OAuth credentials — requires Google Cloud Console setup)
-//
-// To use this file:
-// 1. Copy it to ~/Library/Application Support/Claude/claude_desktop_config.json (Mac)
-//    or %APPDATA%\Claude\claude_desktop_config.json (Windows)
-// 2. Replace all [PLACEHOLDER] values with your actual information
-// 3. Restart Claude Desktop
-
 {
   "mcpServers": {
     "obsidian": {
       "command": "npx",
       "args": [
         "-y",
-        "obsidian-mcp",
+        "@modelcontextprotocol/server-filesystem",
         "/Users/[YOUR_USERNAME]/Library/Mobile Documents/iCloud~md~obsidian/Documents/[YOUR_VAULT_NAME]"
       ]
     },
     "google-docs": {
       "command": "npx",
-      "args": ["-y", "@anthropic/google-docs-mcp"],
+      "args": [
+        "-y",
+        "@a-bonus/google-docs-mcp"
+      ],
       "env": {
         "GOOGLE_CLIENT_ID": "[YOUR_GOOGLE_CLIENT_ID]",
         "GOOGLE_CLIENT_SECRET": "[YOUR_GOOGLE_CLIENT_SECRET]"

@@ -119,3 +119,22 @@ You can use all of these at once. Your settings file can include multiple tool c
 For a full settings file example with Obsidian + Google Drive, see [claude_desktop_config.advanced.example.json](../claude_desktop_config.advanced.example.json).
 
 Built-in Connectors (Gmail, Calendar, GitHub, Slack) are configured separately through [claude.ai](https://claude.ai) → Settings → Connectors and don't need to be in the settings file.
+
+---
+
+## About the advanced example file
+
+The file [claude_desktop_config.advanced.example.json](../claude_desktop_config.advanced.example.json) contains the MCP servers that require local setup:
+
+- **Obsidian** — via filesystem access
+- **Google Drive** — via OAuth credentials (requires Google Cloud Console setup; see [google-drive-setup.md](google-drive-setup.md))
+
+Gmail, Google Calendar, and GitHub are **not** configured in that file. They use Claude Desktop's built-in Connectors instead — see [gmail-calendar-github-setup.md](gmail-calendar-github-setup.md).
+
+### To use the advanced example file
+
+1. Copy it to your Claude Desktop config location:
+   - **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+2. Replace all `[PLACEHOLDER]` values with your actual information.
+3. Restart Claude Desktop.
