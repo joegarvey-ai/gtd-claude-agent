@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 540" role="img" aria-label="gtd-claude-agent architecture">
+  <style>
+    .bg { fill: transparent; }
+    .label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-weight: 600; }
+    .sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-weight: 400; font-size: 13px; }
+    .caption { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-weight: 400; font-size: 14px; font-style: italic; }
+    .card { stroke-width: 1.5; }
+    .line { stroke-width: 2; fill: none; stroke-linecap: round; }
+    .center-card { fill: #1F2937; stroke: #0F172A; }
+    .center-label { fill: #F9FAFB; font-size: 20px; }
+    .center-sub { fill: #9CA3AF; font-size: 13px; }
+    .you-circle { fill: #E5E7EB; stroke: #6B7280; }
+    .you-label { fill: #374151; font-size: 16px; }
+    .bus { fill: #F3F4F6; stroke: #D1D5DB; }
+    .bus-label { fill: #6B7280; font-size: 12px; letter-spacing: 2px; }
+    .connector { stroke: #9CA3AF; }
+    .tool-label { fill: #FFFFFF; font-size: 15px; }
+    .caption-text { fill: #6B7280; }
+    @media (prefers-color-scheme: dark) {
+      .center-card { fill: #F3F4F6; stroke: #FFFFFF; }
+      .center-label { fill: #111827; }
+      .center-sub { fill: #6B7280; }
+      .you-circle { fill: #374151; stroke: #9CA3AF; }
+      .you-label { fill: #E5E7EB; }
+      .bus { fill: #1F2937; stroke: #374151; }
+      .bus-label { fill: #9CA3AF; }
+      .connector { stroke: #6B7280; }
+      .caption-text { fill: #9CA3AF; }
+    }
+  </style>
+  <rect class="bg" width="1200" height="540"/>
+
+  <!-- You -->
+  <circle class="you-circle card" cx="100" cy="140" r="36"/>
+  <text class="you-label label" x="100" y="145" text-anchor="middle">You</text>
+
+  <!-- Arrow from You to Claude Desktop -->
+  <path class="line connector" d="M 140 140 L 440 140" marker-end="url(#arrow)"/>
+
+  <!-- Claude Desktop center card -->
+  <rect class="center-card card" x="440" y="90" width="320" height="100" rx="10"/>
+  <text class="center-label label" x="600" y="128" text-anchor="middle">Claude Desktop</text>
+  <text class="center-sub sub" x="600" y="155" text-anchor="middle">+ GTD system prompt</text>
+
+  <!-- Line down from Claude Desktop to MCP bus -->
+  <path class="line connector" d="M 600 190 L 600 250"/>
+
+  <!-- MCP bus -->
+  <rect class="bus card" x="200" y="250" width="800" height="40" rx="6"/>
+  <text class="bus-label label" x="600" y="275" text-anchor="middle">M C P</text>
+
+  <!-- Connector lines down to tools -->
+  <path class="line connector" d="M 300 290 L 300 350"/>
+  <path class="line connector" d="M 450 290 L 450 350"/>
+  <path class="line connector" d="M 600 290 L 600 350"/>
+  <path class="line connector" d="M 750 290 L 750 350"/>
+  <path class="line connector" d="M 900 290 L 900 350"/>
+
+  <!-- Tool cards -->
+  <rect class="card" x="220" y="350" width="160" height="70" rx="8" fill="#7C3AED" stroke="#6D28D9"/>
+  <text class="tool-label label" x="300" y="392" text-anchor="middle">Obsidian</text>
+
+  <rect class="card" x="370" y="350" width="160" height="70" rx="8" fill="#EA4335" stroke="#C5221F"/>
+  <text class="tool-label label" x="450" y="392" text-anchor="middle">Gmail</text>
+
+  <rect class="card" x="520" y="350" width="160" height="70" rx="8" fill="#4285F4" stroke="#1A73E8"/>
+  <text class="tool-label label" x="600" y="392" text-anchor="middle">Google Calendar</text>
+
+  <rect class="card" x="670" y="350" width="160" height="70" rx="8" fill="#FBBC04" stroke="#F29900"/>
+  <text class="tool-label label" x="750" y="392" text-anchor="middle" fill="#1F2937">Google Drive</text>
+
+  <rect class="card" x="820" y="350" width="160" height="70" rx="8" fill="#181717" stroke="#000000"/>
+  <text class="tool-label label" x="900" y="392" text-anchor="middle">GitHub</text>
+
+  <!-- Caption -->
+  <text class="caption caption-text" x="600" y="485" text-anchor="middle">Claude proposes. You approve. Nothing sends, posts, or deletes without your say-so.</text>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9CA3AF"/>
+    </marker>
+  </defs>
+</svg>

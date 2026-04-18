@@ -30,10 +30,13 @@ Then reopen Claude Desktop.
 
 **3. Is the settings file in the right place?**
 
-- **Mac:** The file must be at `/Users/YOUR_USERNAME/Library/Application Support/Claude/claude_desktop_config.json`
-  - To check: open Finder → **Go** menu → **Go to Folder** → paste `~/Library/Application Support/Claude/` → press Enter
-- **Windows:** The file must be at `%APPDATA%\Claude\claude_desktop_config.json`
-  - To check: press **Win + R** → type `%APPDATA%\Claude` → press Enter
+> **Easiest way to find (and open) the file:** In Claude Desktop, go to **Settings → Developer → Edit Config**. This opens the config file in your default editor and creates it if it doesn't exist yet.
+
+**Fallback — Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+Note: `~/Library` is hidden by default. Use Finder → **Go → Go to Folder** (⌘⇧G) and paste the path.
+
+**Fallback — Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+Paste this into the address bar in File Explorer.
 
 The file must be named **exactly** `claude_desktop_config.json` — not `claude_desktop_config.json.txt` or anything else.
 
@@ -115,15 +118,19 @@ If you moved your vault folder or renamed it, the path in your settings file is 
 
 That's completely normal on a fresh installation of Claude Desktop. The file isn't created automatically — you create it yourself.
 
-Follow the settings file creation steps in your setup guide:
+> **Easiest way:** In Claude Desktop, go to **Settings → Developer → Edit Config**. This opens the config file in your default editor and creates it if it doesn't exist yet.
+
+If **Edit Config** isn't available in your version of Claude Desktop, follow the settings file creation steps in your setup guide:
 - **Mac:** [SETUP-MAC.md → Step 4](SETUP-MAC.md#step-4-connect-claude-desktop-to-obsidian)
 - **Windows:** [SETUP-WINDOWS.md → Step 4](SETUP-WINDOWS.md#step-4-connect-claude-desktop-to-obsidian)
 
 The file locations are:
-- **Mac:** `/Users/YOUR_USERNAME/Library/Application Support/Claude/claude_desktop_config.json`
+- **Fallback — Mac:** `/Users/YOUR_USERNAME/Library/Application Support/Claude/claude_desktop_config.json`
   - Shortcut: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+  - Note: `~/Library` is hidden by default. Use Finder → **Go → Go to Folder** (⌘⇧G) and paste the path.
+- **Fallback — Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
   - Full path is usually: `C:\Users\YOUR_USERNAME\AppData\Roaming\Claude\claude_desktop_config.json`
+  - Paste `%APPDATA%\Claude` into the address bar in File Explorer.
 
 ---
 

@@ -83,7 +83,7 @@ Your Client Secret looks something like: `GOCSPX-abcdefghijk`
 > **What you're doing:** Putting your credentials into Claude Desktop's configuration so it can connect to Drive.
 > **Why it matters:** This is the final step that links everything together.
 
-1. Open your `claude_desktop_config.json` file (see [SETUP.md](../SETUP.md) for how to find it)
+1. Open your `claude_desktop_config.json` file — pick your OS: [SETUP-MAC.md](../SETUP-MAC.md) or [SETUP-WINDOWS.md](../SETUP-WINDOWS.md) for how to find it
 2. Find the `google-docs` section
 3. Replace `[YOUR_GOOGLE_CLIENT_ID]` with your actual Client ID
 4. Replace `[YOUR_GOOGLE_CLIENT_SECRET]` with your actual Client Secret
@@ -93,7 +93,10 @@ It should look like this (with your real values):
 ```json
 "google-docs": {
   "command": "npx",
-  "args": ["-y", "@anthropic/google-docs-mcp"],
+  "args": [
+    "-y",
+    "@a-bonus/google-docs-mcp"
+  ],
   "env": {
     "GOOGLE_CLIENT_ID": "123456789-abcdef.apps.googleusercontent.com",
     "GOOGLE_CLIENT_SECRET": "GOCSPX-abcdefghijk"
