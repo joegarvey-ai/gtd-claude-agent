@@ -204,11 +204,19 @@ So if your username is `johndoe` and your vault is called `GTD`, your full path 
   "mcpServers": {
     "obsidian": {
       "command": "npx",
-      "args": ["-y", "obsidian-mcp", "PASTE_YOUR_VAULT_PATH_HERE"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "PASTE_YOUR_VAULT_PATH_HERE"
+      ]
     }
   }
 }
 ```
+
+> **About this package:** This uses the standard filesystem MCP server pointed at your Obsidian vault. Your vault is just a folder of markdown files, so Claude can read and write notes through this server without needing an Obsidian-specific package.
+>
+> **Multi-vault tip:** If you have more than one vault and want Claude to see all of them, you can point the path at the parent folder (e.g. `/Users/johndoe/Library/Mobile Documents/iCloud~md~obsidian/Documents`) instead of a specific vault.
 
 7. Replace `PASTE_YOUR_VAULT_PATH_HERE` with your actual vault path from the previous step. **Keep the quotes around it.**
 
@@ -219,7 +227,11 @@ So if your username is `johndoe` and your vault is called `GTD`, your full path 
   "mcpServers": {
     "obsidian": {
       "command": "npx",
-      "args": ["-y", "obsidian-mcp", "/Users/johndoe/Library/Mobile Documents/iCloud~md~obsidian/Documents/GTD"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/johndoe/Library/Mobile Documents/iCloud~md~obsidian/Documents/GTD"
+      ]
     }
   }
 }

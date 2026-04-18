@@ -2,7 +2,11 @@
   "mcpServers": {
     "obsidian": {
       "command": "npx",
-      "args": ["-y", "obsidian-mcp", "PASTE_YOUR_VAULT_PATH_HERE"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "PASTE_YOUR_VAULT_PATH_HERE"
+      ]
     }
   }
 }

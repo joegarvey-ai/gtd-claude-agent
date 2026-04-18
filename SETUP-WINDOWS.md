@@ -218,11 +218,19 @@ C:\Users\YOUR_USERNAME\OneDrive\Obsidian\YOUR_VAULT_NAME
   "mcpServers": {
     "obsidian": {
       "command": "npx",
-      "args": ["-y", "obsidian-mcp", "PASTE_YOUR_VAULT_PATH_HERE"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "PASTE_YOUR_VAULT_PATH_HERE"
+      ]
     }
   }
 }
 ```
+
+> **About this package:** This uses the standard filesystem MCP server pointed at your Obsidian vault. Your vault is just a folder of markdown files, so Claude can read and write notes through this server without needing an Obsidian-specific package.
+>
+> **Multi-vault tip:** If you have more than one vault and want Claude to see all of them, you can point the path at the parent folder (e.g. `C:\\Users\\johndoe\\Documents`) instead of a specific vault.
 
 6. Replace `PASTE_YOUR_VAULT_PATH_HERE` with your actual vault path from the previous step. **Keep the quotes around it.**
 
@@ -241,7 +249,11 @@ C:\Users\YOUR_USERNAME\OneDrive\Obsidian\YOUR_VAULT_NAME
   "mcpServers": {
     "obsidian": {
       "command": "npx",
-      "args": ["-y", "obsidian-mcp", "C:\\Users\\johndoe\\Documents\\GTD"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\Users\\johndoe\\Documents\\GTD"
+      ]
     }
   }
 }
@@ -254,7 +266,11 @@ C:\Users\YOUR_USERNAME\OneDrive\Obsidian\YOUR_VAULT_NAME
   "mcpServers": {
     "obsidian": {
       "command": "npx",
-      "args": ["-y", "obsidian-mcp", "C:\\Users\\johndoe\\iCloud Drive\\Obsidian\\GTD"]
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\Users\\johndoe\\iCloud Drive\\Obsidian\\GTD"
+      ]
     }
   }
 }
