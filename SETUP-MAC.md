@@ -174,6 +174,13 @@ So if your username is `johndoe` and your vault is called `GTD`, your full path 
 
 ### Create the settings file
 
+> **Easiest way:** In Claude Desktop, go to **Settings → Developer → Edit Config**. This opens the config file in your default editor and creates it if it doesn't exist yet. If that works for you, skip to step 6 below.
+
+If **Edit Config** isn't available in your version of Claude Desktop, use the fallback below.
+
+**Fallback — Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+Note: `~/Library` is hidden by default. Use Finder → **Go → Go to Folder** (⌘⇧G) and paste the path.
+
 1. Open **Finder**
 2. In the menu bar at the top of the screen, click **Go**
 3. Click **Go to Folder...**

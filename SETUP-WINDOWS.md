@@ -189,6 +189,13 @@ C:\Users\YOUR_USERNAME\OneDrive\Obsidian\YOUR_VAULT_NAME
 
 ### Create the settings file
 
+> **Easiest way:** In Claude Desktop, go to **Settings → Developer → Edit Config**. This opens the config file in your default editor and creates it if it doesn't exist yet. If that works for you, skip to step 5 below.
+
+If **Edit Config** isn't available in your version of Claude Desktop, use the fallback below.
+
+**Fallback — Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+Paste this into the address bar in File Explorer.
+
 1. Press **Win + R** on your keyboard (hold the Windows key and press R). A small "Run" box will appear.
 2. Type this and press **Enter**:
 
