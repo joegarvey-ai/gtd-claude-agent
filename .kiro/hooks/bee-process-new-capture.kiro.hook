@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Process new Bee capture",
+  "description": "When a new raw Bee capture file is written to 05 Reference/Bee/_raw/, process it per the bee-processing steering rules: redact sensitive content, produce tasks/meeting notes/people notes, and propose before writing.",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      "**/05 Reference/Bee/_raw/**/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new Bee capture just landed in 05 Reference/Bee/_raw/. Read the bee-processing steering, then read the new raw file, apply the redaction policy, and produce the three outputs (tasks in 00 Inbox/Bee/, meeting notes in the work or personal Meeting Notes folder, and updated People notes). Propose the file paths and a one-line preview of each before writing, then wait for the user to confirm."
+  }
+}

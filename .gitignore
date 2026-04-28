@@ -16,3 +16,17 @@ credentials.json
 
 # Node
 node_modules/
+
+# Personal Kiro config — never commit. Only the portable .kiro/steering/*.md and
+# .kiro/hooks/*.kiro.hook files belong in the repo.
+.kiro/settings/mcp.json
+.kiro/specs/
+.kiro/steering/gtd-assistant.md
+
+# Scratch folder used for local workspace staging — never commit
+tmp-bee-output/
+
+# Personal document folders that should never be pushed to the public repo
+Decision Making/
+Docs for review/
+20* Annual Review*/

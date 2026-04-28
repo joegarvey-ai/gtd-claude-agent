@@ -361,6 +361,6 @@ Open your Project in Claude Desktop (or at claude.ai) and try these prompts one 
 
 - **Daily use:** Dump tasks and ideas into your `00 Inbox` folder in Obsidian, then ask Claude to process your inbox
 - **Weekly reviews:** Ask Claude to run a weekly review — it will check all your folders and flag anything that needs attention
-- **Advanced connections:** Want to connect Google Drive, GitHub, or Slack? See [docs/advanced-connectors.md](docs/advanced-connectors.md)
+- **Advanced connections:** Want to connect your Bee lifelogger, Google Drive, GitHub, or Slack? See [docs/advanced-connectors.md](docs/advanced-connectors.md)
 - **Customize your system:** Want to tweak how Claude works for you? See [docs/customizing-your-system-prompt.md](docs/customizing-your-system-prompt.md)
 - **Sync options:** Need to sync your notes to Android or another device? See [docs/obsidian-sync-options.md](docs/obsidian-sync-options.md)
