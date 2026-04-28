@@ -1,0 +1,73 @@
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+    Installs the Bee stream watcher to auto-start at login (Layer 2).
+
+.DESCRIPTION
+    Adds a registry entry under HKCU:\Software\Microsoft\Windows\CurrentVersion\Run
+    so the watcher starts when this user logs in. No UAC elevation required.
+
+    Reuses the vault path config at %LOCALAPPDATA%\bee-sync\config.ps1. If that
+    config doesn't exist, this script will prompt for it (same as the Layer 1
+    installer).
+
+    The watcher itself loops forever with auto-reconnect logic.
+#>
+
+$ErrorActionPreference = 'Stop'
+
+$runKey        = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+$valueName     = 'BeeStreamWatcher'
+$scriptDir     = Split-Path -Parent $PSCommandPath
+$watcherScript = Join-Path $scriptDir 'bee-stream-watcher.ps1'
+
+if (-not (Test-Path $watcherScript)) {
+    Write-Error "Cannot find $watcherScript."
+    exit 1
+}
+
+# Ensure config exists (shared with Layer 1)
+$configDir  = Join-Path $env:LOCALAPPDATA 'bee-sync'
+$configFile = Join-Path $configDir 'config.ps1'
+if (-not (Test-Path $configDir)) { New-Item -ItemType Directory -Force -Path $configDir | Out-Null }
+
+if (-not (Test-Path $configFile)) {
+    Write-Host ""
+    Write-Host "=== First-time setup ==="
+    Write-Host "Enter the full path to your Obsidian vault's Bee raw folder."
+    Write-Host "Typical paths:"
+    Write-Host "  C:\Users\YOUR_USERNAME\iCloud Drive\Obsidian\YOUR_VAULT\05 Reference\Bee\_raw"
+    Write-Host "  C:\Users\YOUR_USERNAME\Documents\YOUR_VAULT\05 Reference\Bee\_raw"
+    Write-Host ""
+    $vaultPath = Read-Host "Vault _raw path"
+    if ([string]::IsNullOrWhiteSpace($vaultPath)) {
+        Write-Error "No path provided. Exiting."
+        exit 1
+    }
+    if (-not (Test-Path $vaultPath)) {
+        Write-Warning "Path does not exist yet: $vaultPath"
+        Write-Warning "Continuing anyway — create the folder in Obsidian before the watcher first runs."
+    }
+    $configContent = "# Auto-generated.`r`n# Edit this file to change your vault path.`r`n`$VaultRaw = '$vaultPath'`r`n"
+    Set-Content -Path $configFile -Value $configContent -Encoding UTF8
+    Write-Host "Config saved: $configFile"
+}
+
+$command = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $watcherScript + '"'
+
+if (-not (Test-Path $runKey)) { New-Item -Path $runKey -Force | Out-Null }
+Set-ItemProperty -Path $runKey -Name $valueName -Value $command
+
+Write-Host "Auto-start installed: HKCU\...\Run\$valueName"
+Write-Host "Starts at your next login."
+Write-Host ""
+Write-Host "Logs: $configDir\bee-watcher.log"
+Write-Host ""
+Write-Host "Start it now (without waiting for next login):"
+Write-Host "    Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File','$watcherScript'"
+Write-Host ""
+Write-Host "Stop it:"
+Write-Host "    Get-CimInstance Win32_Process -Filter `"Name='powershell.exe'`" | Where-Object { `$_.CommandLine -match 'bee-stream-watcher' } | ForEach-Object { Stop-Process -Id `$_.ProcessId -Force }"
+Write-Host ""
+Write-Host "Uninstall:"
+Write-Host "    Remove-ItemProperty -Path '$runKey' -Name '$valueName'"

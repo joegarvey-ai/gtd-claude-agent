@@ -127,37 +127,35 @@ You don't need to do anything else. The GTD Assistant reads the already-processe
 
 ---
 
-## Step 6: Event-driven sync (the real-time piece)
+## Step 6: Automated sync (Windows)
 
-Running `bee sync` manually is fine for trying it out, but the real win is having captures flow into Obsidian automatically as meetings end.
+This repo ships PowerShell scripts that give you two layers of sync automation on Windows:
 
-The Bee CLI has a `bee stream` command that emits live events (new utterance, update-conversation, todo-created, etc.). When a conversation completes, you can trigger a targeted sync of just that conversation.
+- **Layer 1 -- scheduled sync every 15 min.** Simple, boring, reliable safety net. Your vault is never more than 15 minutes behind.
+- **Layer 2 -- event-driven watcher.** Listens to `bee stream --json` and triggers a targeted sync within ~30 seconds of each conversation completing.
 
-### Option A — Simple: scheduled polling
+Both are safe to run together. Install them from a PowerShell prompt:
 
-If you want something minimal, schedule `bee sync` to run every 15 minutes.
+```powershell
+# From the repo root
+.\scripts\install-bee-sync-task.ps1          # Layer 1 - prompts for your _raw path on first run
+.\scripts\install-bee-watcher-autostart.ps1  # Layer 2 - reuses the Layer 1 config
+```
 
-**Mac (cron):**
+See [`scripts/README.md`](../scripts/README.md) for full details, verification commands, logs, and uninstall steps. The scripts require no admin/UAC elevation.
+
+### Mac and Linux
+
+Reference scripts for cron and `launchd` are planned. For now, the simplest Mac setup:
+
 ```bash
 crontab -e
 # Add:
 */15 * * * * /usr/local/bin/bee sync --output "$HOME/path/to/vault/05 Reference/Bee/_raw" > /dev/null 2>&1
 ```
 
-**Windows (Task Scheduler):**
+For event-driven on Mac/Linux, run `bee stream --json` into a debounced shell script managed by `launchd` or `systemd --user`. PRs welcome.
 
-Create a scheduled task that runs this PowerShell command every 15 minutes:
-```powershell
-bee sync --output "C:\Users\YOUR_USERNAME\path\to\vault\05 Reference\Bee\_raw"
-```
-
-### Option B — Event-driven: `bee stream` watcher
-
-A small watcher script runs `bee stream --json` in the background. When it sees an `update-conversation` event marking a conversation as complete, it runs a targeted sync.
-
-A reference watcher script is planned for a future release of this repo. In the meantime, you can write your own — the event shape is documented in the [Bee Realtime docs](https://docs.bee.computer/docs/realtime).
-
----
 
 ## Kiro users: automatic processing via hook
 
