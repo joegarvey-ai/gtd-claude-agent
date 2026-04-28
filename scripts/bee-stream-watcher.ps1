@@ -5,24 +5,24 @@
     when conversations complete.
 
 .DESCRIPTION
-    Reads `bee stream --json` line by line. When a conversation-complete or
-    update-conversation event fires, debounces for 30 seconds and runs
-    `bee sync` to pull the latest captures into the vault.
+    Reads bee stream --json line by line. When a conversation-complete or
+    update-conversation event fires, debounces for 30 seconds and then runs
+    bee sync to pull the latest captures into the vault.
 
     Auto-reconnects if the stream drops. Runs indefinitely.
 
-    Layer 2 of a two-layer sync setup. Pair with bee-sync-scheduled.ps1 (Layer 1)
-    as a safety net; both are safe to run together. Layer 2 gets you near-real-time
-    updates, Layer 1 guarantees nothing is more than 15 min stale.
+    Layer 2 companion to bee-sync-scheduled.ps1 (Layer 1). Both are safe to
+    run together; the watcher gets you near-real-time updates while the
+    scheduled task guarantees nothing's ever more than 15 min stale.
 
 .NOTES
-    Install with scripts/install-bee-watcher-autostart.ps1 so it starts at login.
-    Logs to %LOCALAPPDATA%\bee-sync\bee-watcher.log.
+    Install with scripts/install-bee-watcher-autostart.ps1 so it starts at
+    login. Logs to %LOCALAPPDATA%\bee-sync\bee-watcher.log.
 #>
 
 $ErrorActionPreference = 'Continue'
 
-# Load vault path from config
+# Load vault path and sentinel dir from config
 $ConfigFile = Join-Path $env:LOCALAPPDATA 'bee-sync\config.ps1'
 if (-not (Test-Path $ConfigFile)) {
     $LogDir = Join-Path $env:LOCALAPPDATA 'bee-sync'
@@ -31,16 +31,23 @@ if (-not (Test-Path $ConfigFile)) {
         -Value ("[{0}] FATAL config missing at {1}. Run install-bee-watcher-autostart.ps1 or install-bee-sync-task.ps1 first." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $ConfigFile)
     exit 1
 }
-. $ConfigFile    # defines $VaultRaw
+. $ConfigFile    # defines $VaultRaw; optionally $SentinelDir
 
-$LogDir   = Join-Path $env:LOCALAPPDATA 'bee-sync'
-$LogFile  = Join-Path $LogDir 'bee-watcher.log'
+# Default SentinelDir if not set in config. When the script lives inside a Kiro
+# workspace at <workspace>/scripts/, default to <workspace>/.kiro/bee-inbox/.
+if (-not $SentinelDir) {
+    $SentinelDir = Join-Path (Split-Path -Parent $PSScriptRoot) '.kiro\bee-inbox'
+}
+
+$LogDir          = Join-Path $env:LOCALAPPDATA 'bee-sync'
+$LogFile         = Join-Path $LogDir 'bee-watcher.log'
+$HashCache       = Join-Path $LogDir 'seen-hashes.json'
 $DebounceSeconds = 30
 
 # Events that should trigger a sync
 $TriggerEvents = @(
     'update-conversation',    # conversation marked complete or updated
-    'new-conversation'        # a new conversation began
+    'new-conversation'        # a new conversation began (sync on start too, in case it completes while we're debouncing)
 )
 
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDir | Out-Null }
@@ -63,18 +70,20 @@ $beeCmd = Join-Path $env:APPDATA 'npm\bee.cmd'
 if (-not (Test-Path $beeCmd)) {
     try { $beeCmd = (Get-Command bee -ErrorAction Stop).Source }
     catch {
-        Write-WatcherLog "FATAL bee CLI not found. Install with: npm install -g @beeai/cli"
+        Write-WatcherLog "FATAL bee CLI not found in PATH or %APPDATA%\npm\. Install with: npm install -g @beeai/cli"
         exit 1
     }
 }
 
 Write-WatcherLog "START bee-stream-watcher pid=$PID bee=$beeCmd"
 
+# Track pending sync state across restarts of the inner stream loop
 $pendingSync = $false
 $lastTriggerTime = [DateTime]::MinValue
 
 while ($true) {
     try {
+        # Start bee stream as a child process and read stdout line-by-line
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = $beeCmd
         $psi.Arguments = 'stream --json'
@@ -87,6 +96,7 @@ while ($true) {
         Write-WatcherLog "CONNECTED stream pid=$($process.Id)"
 
         while (-not $process.HasExited) {
+            # Non-blocking-ish read: check for a line, also check debounce timer
             if (-not $process.StandardOutput.EndOfStream) {
                 $line = $process.StandardOutput.ReadLine()
                 if ([string]::IsNullOrWhiteSpace($line)) { continue }
@@ -105,12 +115,13 @@ while ($true) {
                         Write-WatcherLog "READY stream connected"
                     }
                 } catch {
-                    # Non-JSON line; ignore
+                    # Non-JSON line; bee stream occasionally emits status text. Ignore.
                 }
             } else {
                 Start-Sleep -Milliseconds 500
             }
 
+            # Debounce: if a trigger is pending and enough time has passed, run sync
             if ($pendingSync) {
                 $elapsed = (Get-Date) - $lastTriggerTime
                 if ($elapsed.TotalSeconds -ge $DebounceSeconds) {
@@ -118,6 +129,62 @@ while ($true) {
                     $syncOutput = & $beeCmd sync --output $VaultRaw 2>&1 | Out-String
                     if ($LASTEXITCODE -eq 0) {
                         Write-WatcherLog "SYNC ok"
+
+                        # Load hash cache (shared with Layer 1)
+                        $cache = @{}
+                        $cacheExisted = Test-Path $HashCache
+                        if ($cacheExisted) {
+                            try {
+                                $cachedObj = Get-Content $HashCache -Raw | ConvertFrom-Json
+                                foreach ($prop in $cachedObj.PSObject.Properties) { $cache[$prop.Name] = $prop.Value }
+                            } catch { $cache = @{}; $cacheExisted = $false }
+                        }
+
+                        # Detect content changes via SHA256 hash
+                        $changed = @()
+                        $currentFiles = Get-ChildItem $VaultRaw -Recurse -File -Filter "*.md" -ErrorAction SilentlyContinue |
+                            Where-Object { $_.FullName -match '\\conversations\\' }
+                        foreach ($f in $currentFiles) {
+                            $convId = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+                            $hash = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
+                            if (-not $cache.ContainsKey($convId) -or $cache[$convId] -ne $hash) {
+                                $changed += $f
+                                $cache[$convId] = $hash
+                            }
+                        }
+                        ($cache | ConvertTo-Json -Compress) | Set-Content -Path $HashCache -Encoding UTF8
+
+                        # First-run guard — don't flood sentinels for historical conversations
+                        if (-not $cacheExisted) {
+                            Write-WatcherLog "SEED hash cache seeded with $($currentFiles.Count) existing conversations (no sentinels on first run)"
+                        } elseif ($changed) {
+                            if (-not (Test-Path $SentinelDir)) {
+                                New-Item -ItemType Directory -Force -Path $SentinelDir | Out-Null
+                            }
+                            foreach ($f in $changed) {
+                                $convId = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+                                $sentinelPath = Join-Path $SentinelDir "$convId.sentinel.md"
+                                $sentinelBody = @"
+---
+source: bee-watcher
+conversation_id: $convId
+raw_path: $($f.FullName)
+written_at: $(Get-Date -Format 'o')
+auto_process: true
+---
+
+# Bee capture ready for processing
+
+New or updated raw capture detected: conversation **$convId**
+
+**Read the raw file at:** ``$($f.FullName)``
+
+Process per the ``bee-processing`` steering rules and auto-write all outputs (tasks, meeting notes, people notes) without prompting. Delete this sentinel file when processing is complete.
+"@
+                                Set-Content -Path $sentinelPath -Value $sentinelBody -Encoding UTF8
+                                Write-WatcherLog "SENTINEL wrote $convId"
+                            }
+                        }
                     } else {
                         Write-WatcherLog "SYNC failed exit=$LASTEXITCODE"
                         Write-WatcherLog $syncOutput.Trim()
@@ -128,6 +195,7 @@ while ($true) {
             }
         }
 
+        # Stream exited
         $exitCode = $process.ExitCode
         Write-WatcherLog "DISCONNECTED stream exit=$exitCode; reconnecting in 10s"
     }

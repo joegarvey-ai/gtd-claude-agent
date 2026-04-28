@@ -1,15 +1,15 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Installs the Bee stream watcher to auto-start at login (Layer 2).
+    Installs the Bee stream watcher to auto-start at login (Layer 2, per-user).
 
 .DESCRIPTION
     Adds a registry entry under HKCU:\Software\Microsoft\Windows\CurrentVersion\Run
     so the watcher starts when this user logs in. No UAC elevation required.
 
     Reuses the vault path config at %LOCALAPPDATA%\bee-sync\config.ps1. If that
-    config doesn't exist, this script will prompt for it (same as the Layer 1
-    installer).
+    config doesn't exist yet, this script will prompt for it (same as the
+    Layer 1 installer) and auto-detect the Kiro sentinel folder if present.
 
     The watcher itself loops forever with auto-reconnect logic.
 #>
@@ -35,9 +35,6 @@ if (-not (Test-Path $configFile)) {
     Write-Host ""
     Write-Host "=== First-time setup ==="
     Write-Host "Enter the full path to your Obsidian vault's Bee raw folder."
-    Write-Host "Typical paths:"
-    Write-Host "  C:\Users\YOUR_USERNAME\iCloud Drive\Obsidian\YOUR_VAULT\05 Reference\Bee\_raw"
-    Write-Host "  C:\Users\YOUR_USERNAME\Documents\YOUR_VAULT\05 Reference\Bee\_raw"
     Write-Host ""
     $vaultPath = Read-Host "Vault _raw path"
     if ([string]::IsNullOrWhiteSpace($vaultPath)) {
@@ -46,10 +43,25 @@ if (-not (Test-Path $configFile)) {
     }
     if (-not (Test-Path $vaultPath)) {
         Write-Warning "Path does not exist yet: $vaultPath"
-        Write-Warning "Continuing anyway — create the folder in Obsidian before the watcher first runs."
     }
-    $configContent = "# Auto-generated.`r`n# Edit this file to change your vault path.`r`n`$VaultRaw = '$vaultPath'`r`n"
-    Set-Content -Path $configFile -Value $configContent -Encoding UTF8
+
+    $workspaceRoot = Split-Path -Parent $scriptDir
+    $kiroWorkspaceDir = Join-Path $workspaceRoot '.kiro'
+    $sentinelDir = ''
+    if (Test-Path $kiroWorkspaceDir) {
+        $sentinelDir = Join-Path $kiroWorkspaceDir 'bee-inbox'
+        New-Item -ItemType Directory -Force -Path $sentinelDir | Out-Null
+        Write-Host "Detected Kiro workspace. Sentinels will land at: $sentinelDir"
+    }
+
+    $configLines = @(
+        "# Auto-generated. Edit to change paths."
+        "`$VaultRaw = '$vaultPath'"
+    )
+    if ($sentinelDir) {
+        $configLines += "`$SentinelDir = '$sentinelDir'"
+    }
+    Set-Content -Path $configFile -Value ($configLines -join "`r`n") -Encoding UTF8
     Write-Host "Config saved: $configFile"
 }
 

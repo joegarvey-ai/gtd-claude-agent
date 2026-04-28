@@ -1,0 +1,1 @@
+# Sentinel files land here when new Bee captures are synced. The Kiro hook fires on them and deletes them after processing.
