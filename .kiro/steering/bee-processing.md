@@ -5,7 +5,7 @@ fileMatchPattern: '**/.kiro/bee-inbox/**'
 
 ## Bee Capture Processing
 
-You process raw lifelog data captured by the user's [Bee](https://bee.computer) wearable. Raw captures land in `05 Reference/Bee/_raw/` in the user's Obsidian vault via the `bee` CLI. The sync scripts detect genuinely-changed captures and drop a sentinel file at `.kiro/bee-inbox/<conversation-id>.sentinel.md` inside the workspace. Your job is to read the sentinel, read the raw capture from the vault path, redact sensitive content, and produce three distinct outputs in the vault.
+You are processing raw lifelog data captured by the user's [Bee](https://bee.computer) wearable. Raw captures land in `05 Reference/Bee/_raw/` via the `bee` CLI. Your job is to read the raw file, redact sensitive content, and produce three distinct outputs in the user's Obsidian vault.
 
 **Never edit files in `_raw/`.** Treat that folder as an immutable source of truth. All output goes elsewhere.
 
@@ -18,7 +18,7 @@ Apply judgment, not keyword matching. Exclude any content that is:
 - **Intimate** — romantic, sexual, or private partner-only conversation
 - **Personal/medical** — health conditions, medications, therapy, mental health details about the user or anyone mentioned
 - **Family-private** — parenting disputes, family conflicts, finances discussed in a family context, anything about minors
-- **Third-party-sensitive** — information about people who clearly did not consent to being recorded (strangers, overheard conversation, personal disclosures not directed at the user)
+- **Third-party-sensitive** — information about people who clearly did not consent to being recorded (strangers, overheard conversation, personal disclosures not directed at Joe)
 
 When in doubt, exclude and note the skip in your processing summary. Do not paraphrase redacted content — omit it entirely.
 
@@ -28,7 +28,7 @@ If the **entire capture** is personal/intimate/private, write nothing to the thr
 
 ## Three Outputs Per Capture
 
-For each raw meeting/conversation, produce up to three artifacts. Skip any that don't apply.
+For each raw meeting/conversation file, produce up to three artifacts. Skip any that don't apply.
 
 ### 1. Tasks → `00 Inbox/Bee/YYYY-MM-DD_<meeting-slug>_tasks.md`
 
@@ -64,9 +64,7 @@ Decide work vs personal using judgment:
 - **Work meeting** → `05 Reference/[EMPLOYER]/Meeting Notes/YYYY-MM-DD_<meeting-slug>.md`
 - **Personal meeting** → `05 Reference/Meeting Notes/YYYY-MM-DD_<meeting-slug>.md`
 
-Replace `[EMPLOYER]` with the user's employer folder name (e.g. `Amazon`). If the user doesn't want the work/personal split, route everything to `05 Reference/Meeting Notes/`.
-
-Most Bee captures are work. Signals of a work meeting: colleagues present, business topics, work projects, customer/partner discussions, work-internal terminology. Signals of personal: friends/family, hobbies, non-work planning, social contexts. When ambiguous, default to work and note the ambiguity in "Things to Keep in Mind."
+Most Bee captures are work. Signals of a work meeting: work colleagues present, business topics, work projects, customer/partner discussions, work-internal terminology. Signals of personal: friends/family, hobbies, non-work planning, social contexts. When ambiguous, default to work and note the ambiguity in "Things to Keep in Mind."
 
 - Cleaned, structured summary of what happened
 - This is reference material, not action material — no task duplicates
@@ -97,7 +95,7 @@ created: <ISO timestamp>
 <Non-actionable context worth remembering — constraints, dependencies, political sensitivities, watch-outs>
 
 ## Takeaways
-<The user's likely takeaways — what this means for them going forward>
+<The user's likely takeaways — what this means for him going forward>
 ```
 
 ### 3. People Notes → `People/<First Last>.md`
@@ -106,7 +104,7 @@ For each **high-signal** person in the meeting, create or update their People no
 
 - **Create a People note when** there's enough signal to populate at least 3 sections meaningfully (Role & Context, plus observations of two other dimensions like Communication Style, Decision-Making Pattern, or Collaboration Notes)
 - **Skip People notes for fly-by participants** who appeared briefly with no substantive characterization. Instead, mention them in the meeting note's "Things to Keep in Mind" section
-- **Always exclude the user themselves** from standard people notes — see "User's own note" below
+- **Always exclude the user themselves** from standard people notes — see "Joe's own note" below
 
 For each kept person:
 
@@ -152,10 +150,10 @@ last_updated: <ISO timestamp>
 - **Open Threads** — add new ones, remove resolved ones
 - Always update `last_updated` in frontmatter
 
-**User's own note (`People/<User Name>.md`):**
-- Treat as the master self-reference. Enrich with new facts learned about the user from meetings (stated preferences, commitments they made, reactions under pressure, etc.).
-- Do **not** add "Recent Topics" to the user's own note — meetings are already captured in `Meeting Notes/`.
-- If the existing file uses a custom structure (not the Bee-processor schema), **append** a new `## Observed Patterns (from Bee captures)` section at the end rather than rewriting existing sections.
+**Joe's own note (`People/<User Name>.md`):**
+- Treat as the master self-reference. Enrich with new facts learned about Joe from meetings (stated preferences, commitments he made, reactions under pressure, etc.).
+- Do **not** add "Recent Topics" to Joe's note — meetings are already captured in `Meeting Notes/`.
+- Use the same structured sections but focused on self-knowledge Joe should preserve.
 
 ---
 
@@ -163,7 +161,7 @@ last_updated: <ISO timestamp>
 
 ### When triggered by a sentinel file (auto-process mode)
 
-The sync scripts drop a sentinel file at `.kiro/bee-inbox/<conversation-id>.sentinel.md` whenever a new or updated raw capture appears. The sentinel's frontmatter includes:
+The sync scripts (`bee-sync-scheduled.ps1` and `bee-stream-watcher.ps1`) drop a sentinel file at `.kiro/bee-inbox/<conversation-id>.sentinel.md` whenever a new or updated raw capture appears. The sentinel's frontmatter includes:
 
 - `raw_path` — absolute path to the raw capture in the vault (lives outside the workspace)
 - `conversation_id` — the Bee conversation ID
@@ -178,6 +176,21 @@ When auto-processing, follow this flow:
 5. Be selective on People notes: only create new notes for high-signal people (context for ~3+ substantive sections). For fly-by participants, mention them in "Things to Keep in Mind" but don't stub a People note.
 6. **Delete the sentinel file** after writing outputs
 7. Summarize in one or two sentences what was written and where — no recap of meeting content
+
+### Writing Style Guide update (fourth output)
+
+After processing each capture, check whether any observations about the user's communication patterns are worth recording. If so, read the user's Writing Style Guide (at `05 Reference/Writing Style Guide & Rules.md` or equivalent) and update the "Voice Analysis from Bee Transcripts" section at the bottom. This section has four subsections:
+
+- **Strengths to Preserve in Writing** — patterns that work well verbally and should carry into written voice
+- **Patterns to Correct in Writing** — verbal habits that don't serve written communication
+- **Calibration Notes for Agents Writing on Behalf** — specific guidance for AI agents drafting content as the user
+
+**Rules for this update:**
+- **Read the existing section first.** Do not duplicate observations already captured. Refine, adjust, or replace existing bullets if new evidence strengthens or contradicts them.
+- **Only add genuinely new patterns.** One meeting rarely surfaces a new pattern. Look for patterns that appear across multiple meetings or that are strikingly clear in a single meeting.
+- **Keep it tight.** Each bullet should be one concrete observation with one concrete writing implication. No filler.
+- **Update the "Last updated" date at the bottom of the section.**
+- **If no style-relevant observations emerge from a capture, skip this step entirely.** Most meetings won't produce style updates.
 
 ### When triggered by direct user request (propose mode)
 
@@ -201,11 +214,10 @@ When the user manually asks you to process a specific capture (not via a sentine
 - **Unknown participant** — if a name was mentioned but you can't tell if it's a first name, last name, or role, note this in the meeting's "Things to Keep in Mind" section and do not create a speculative People note
 - **Ambiguous task owner** — default to the user. Flag in the task description if ownership is unclear.
 - **Duplicate task across meetings** — check `00 Inbox/Bee/` for existing task files from the last 7 days; if the same commitment appears, reference the existing file rather than duplicating
-- **Hard-to-redact content** — if judgment is genuinely unclear, err on the side of excluding from People and Meeting Notes but ask before dropping any potential action items
-- **Transcript lacks speaker diarization** — the Bee CLI does not currently label speakers. Infer from context, note the limitation in "Things to Keep in Mind", and treat specific quote attribution as probabilistic.
+- **Hard-to-redact content** — if judgment is genuinely unclear, err on the side of excluding from People and Meeting Notes but ask the user before dropping any potential action items
 
 ---
 
-## Consumption by GTD Assistant
+## Consumption by gtd-assistant
 
-The outputs in `00 Inbox/Bee/` flow through normal GTD inbox processing — the GTD assistant handles routing from `00 Inbox/Bee/` into `01 Next Actions/` just as it would any other inbox item. Meeting Notes and People notes are reference material the GTD assistant reads during weekly reviews and contextual lookups. No coordination is needed between the two systems; they communicate through the vault.
+The outputs in `00 Inbox/Bee/` flow through normal GTD inbox processing — the gtd-assistant steering handles routing from `00 Inbox/Bee/` into `01 Next Actions/` just as it would any other inbox item. Meeting Notes and People notes are reference material the gtd-assistant reads during weekly reviews and contextual lookups. No coordination is needed between the two systems; they communicate through the vault.

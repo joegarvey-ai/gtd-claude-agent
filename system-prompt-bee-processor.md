@@ -160,6 +160,17 @@ last_updated: <ISO timestamp>
 - No Recent Topics section (meetings already in `Meeting Notes/`)
 - If the existing file uses its own structure, append a new `## Observed Patterns (from Bee captures)` section at the end rather than rewriting existing sections
 
+
+### Writing Style Guide (fourth output, optional)
+
+If the user maintains a Writing Style Guide (e.g. at `05 Reference/Writing Style Guide & Rules.md`), check whether any observations about their communication patterns are worth recording after processing each capture. Look for a "Voice Analysis from Bee Transcripts" section at the bottom of the guide and update it with:
+
+- **Strengths to Preserve in Writing** -- verbal patterns that should carry into written voice
+- **Patterns to Correct in Writing** -- verbal habits that don't serve written communication
+- **Calibration Notes for Agents** -- guidance for AI agents drafting content on the user's behalf
+
+Rules: read existing content first; refine or replace, don't duplicate; only add genuinely new patterns; keep each bullet to one observation + one writing implication; update the "Last updated" date. If no style-relevant observations emerge, skip this step entirely.
+
 ---
 
 ## Processing Workflow

@@ -4,7 +4,7 @@
   "description": "Fires when a sentinel file appears in .kiro/bee-inbox/ (written by the sync scripts after detecting a new or updated Bee conversation). Reads the sentinel to find the raw file path, processes per bee-processing steering, writes outputs directly to the vault, then deletes the sentinel.",
   "version": "2",
   "when": {
-    "type": "fileCreated",
+    "type": "fileEdited",
     "patterns": [
       ".kiro/bee-inbox/*.sentinel.md"
     ]
