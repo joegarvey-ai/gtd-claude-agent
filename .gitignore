@@ -11,22 +11,36 @@ claude_desktop_config.json
 token.json
 credentials.json
 
+# IDE
+.vscode/
+
 # macOS
 .DS_Store
 
 # Node
 node_modules/
 
-# Personal Kiro config — never commit. Only the portable .kiro/steering/*.md and
-# .kiro/hooks/*.kiro.hook files belong in the repo.
-.kiro/settings/mcp.json
-.kiro/specs/
-.kiro/steering/gtd-assistant.md
-
-# Scratch folder used for local workspace staging — never commit
-tmp-bee-output/
-
-# Personal document folders that should never be pushed to the public repo
+# Local-only work content (not for public repo)
 Decision Making/
 Docs for review/
-20* Annual Review*/
+20260420 Annual Review Planning/
+scratch/
+ADT_April_Newsletter_2026_Revised.md
+Technical_Program_Manager_Role_Guideline*.docx
+
+# Local Kiro config (contains vault paths, server paths, credentials context)
+.kiro/settings/mcp.json
+
+# Local steering overrides (personalized, contains employer-specific content)
+.kiro/steering/gtd-assistant.md
+
+# Local specs (contain employer-specific strategy/team content)
+.kiro/specs/adt-decision-framework/
+
+# Sentinel processing state
+.kiro/bee-inbox/_staging/
+.kiro/bee-inbox/_output/
+.kiro/bee-inbox/*.sentinel.md
+
+# Kiro hook with employer-specific Taskei config
+.kiro/hooks/weekly-status-update-team.kiro.hook

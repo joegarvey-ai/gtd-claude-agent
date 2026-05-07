@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Bee Sentinel Auto-Process",
+  "description": "Automatically processes new Bee captures when the scheduled sync writes a sentinel to .kiro/bee-inbox/. Reads the sentinel, pulls in the raw capture path, and produces tasks, meeting notes, and People note updates per the bee-processing steering rules, then deletes the sentinel.",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      ".kiro/bee-inbox/*.sentinel.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new Bee sentinel file has been detected in .kiro/bee-inbox/. This means the scheduled Bee sync has downloaded a new or updated raw capture and is asking you to process it.\n\nFollow the bee-processing steering rules (inclusion: fileMatch on 05 Reference/Bee/_raw/**) in auto-process mode:\n\n1. Read the sentinel file to get the raw_path and conversation_id from frontmatter.\n2. Stage the raw capture into .kiro/bee-inbox/_staging/ so you can read it with readFile.\n3. Apply the redaction policy (skip intimate/medical/family-private/third-party-sensitive content; redact partial captures; preserve operational facts like PTO windows).\n4. Produce the three outputs per the steering — tasks, meeting notes, and selective People note updates — staged into .kiro/bee-inbox/_output/ mirroring the vault structure (00 Inbox/Bee/, 05 Reference/[EMPLOYER]/Meeting Notes/ or 05 Reference/Meeting Notes/, People/).\n5. For People notes on users who already have existing notes, write in append-mode with an _APPEND_MODE_SENTINEL_ header so sync preserves existing content.\n6. Run a sync script that copies standard files directly, appends to existing People notes (stripping the append-mode header), deletes the processed sentinel, and cleans up the _output and _staging directories.\n7. Check if the capture state is still CAPTURING in the raw file — if so, note capture_state: PARTIAL in frontmatter and mention that the next sync will re-fire the sentinel when it completes.\n8. Be selective on People notes — only create new notes for high-signal people with enough context to populate at least 3 substantive sections (Role & Context plus two others). Fly-by participants go into Things to Keep in Mind in the meeting note.\n9. Update [YOUR_NAME].md's Observed Patterns and Voice Analysis sections with any new patterns surfaced in the capture — refine existing observations rather than duplicating them.\n10. Summarize in one or two sentences what was written and where — no recap of meeting content.\n\nIf multiple sentinels are present, process them all in a single pass (write all outputs, then sync once). The sync script pattern from prior processing runs is: iterate outputs → copy standard files → append to existing People files → delete sentinels → clean staging."
+  }
+}

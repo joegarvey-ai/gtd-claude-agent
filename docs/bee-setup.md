@@ -1,10 +1,10 @@
 # Bee Lifelog Integration
 
-> **What it gives you:** Your [Bee](https://bee.computer) wearable captures conversations throughout the day. This integration pipes those captures into Obsidian, where Claude (or Kiro) cleans them up, redacts sensitive content, and organizes them into stack-ranked tasks, structured meeting notes, and a growing set of bios of the people you work with.
+> **What it gives you:** Your [Bee](https://bee.computer) wearable captures conversations throughout the day. This integration pipes those captures into Obsidian, where Claude (or Kiro) cleans them up, redacts sensitive content, and organizes them into tasks, meeting notes, and a growing set of structured bios of the people you work with.
 >
 > **Difficulty:** Moderate — install one CLI, paste a system prompt, optionally set up a background watcher.
 >
-> **Prerequisites:** A Bee device and account, Node.js installed (you already have this from the main setup), an Obsidian vault configured with the GTD folder structure.
+> **Prerequisites:** A Bee device + account, Node.js installed (you already have this from the main setup), an Obsidian vault configured with the GTD folder structure.
 
 ---
 
@@ -14,13 +14,13 @@
 Bee wearable
    │
    ▼  (background watcher runs `bee stream`)
-<vault>/05 Reference/Bee/_raw/                ← raw captures, never edited
+<vault>/05 Reference/Bee/_raw/             ← raw captures, never edited
    │
-   ▼  (Claude Desktop "Bee Processor" project OR Kiro hook)
-<vault>/00 Inbox/Bee/                         ← stack-ranked tasks per meeting
-<vault>/05 Reference/[EMPLOYER]/Meeting Notes/ ← cleaned work meeting summaries (common case)
-<vault>/05 Reference/Meeting Notes/           ← cleaned personal meeting summaries
-<vault>/People/<name>.md                      ← structured, evolving bios
+   ▼  (Claude Desktop "Bee Processor" project OR Kiro)
+<vault>/00 Inbox/Bee/                      ← stack-ranked tasks per meeting
+<vault>/05 Reference/Amazon/Meeting Notes/ ← cleaned work meeting summaries (common case)
+<vault>/05 Reference/Meeting Notes/        ← cleaned personal meeting summaries
+<vault>/People/<name>.md                   ← structured, evolving bios
 ```
 
 Two agents are involved:
@@ -29,8 +29,6 @@ Two agents are involved:
 - **GTD Assistant** — your main project. Reads the processed outputs like any other inbox or reference material. Never touches `_raw/`.
 
 The two communicate through the vault. No direct handoff, no cross-prompt contamination.
-
-Replace `[EMPLOYER]` below with your actual employer folder name (e.g. `Amazon`). If you don't want the work/personal split, skip the employer subfolder and route everything to `05 Reference/Meeting Notes/`.
 
 ---
 
@@ -63,11 +61,11 @@ In Obsidian (or your file explorer), create these folders inside your vault:
   Bee/
     _raw/                       ← where sync output lands
   Meeting Notes/                ← cleaned *personal* meeting summaries land here
-  [EMPLOYER]/                   ← (e.g. Amazon)
+  Amazon/                       ← (or your employer's name)
     Meeting Notes/              ← cleaned *work* meeting summaries land here
 ```
 
-Most captures will be work-related. If you're not using this for work, you can skip the `[EMPLOYER]/Meeting Notes/` folder — the processor will fall back to the personal Meeting Notes folder.
+Most captures will be work-related. If you're not using this for work, you can skip the `Amazon/Meeting Notes/` folder — the processor uses judgment and will fall back to the personal Meeting Notes folder.
 
 The `People/` folder should already exist from the main setup.
 
@@ -87,11 +85,7 @@ bee sync --output "$HOME/path/to/your/vault/05 Reference/Bee/_raw"
 bee sync --output "C:\Users\YOUR_USERNAME\path\to\your\vault\05 Reference\Bee\_raw"
 ```
 
-You should see `facts.md`, `todos.md`, and a `conversations/` directory appear in `_raw/`. Open one of the conversation files in Obsidian to confirm it's readable.
-
-### Heads-up on raw transcripts
-
-As of this writing, the Bee CLI export does not include speaker diarization — every utterance is labeled `Unknown:`. The processor handles this by inferring speakers from context and flagging the limitation in each meeting note. Expect this to improve as Bee ships diarization.
+You should see `facts.md`, `todos.md`, and a `daily/` directory appear in `_raw/`. Open one of the conversation files in Obsidian to confirm it's readable.
 
 ---
 
@@ -104,7 +98,7 @@ As of this writing, the Bee CLI export does not include speaker diarization — 
 5. Open [`system-prompt-bee-processor.md`](../system-prompt-bee-processor.md) in this repo
 6. Copy everything below the `---` line
 7. Paste it into the project's custom instructions
-8. Replace `[YOUR_NAME]`, `[VAULT_PATH]`, and `[EMPLOYER]` with your own info
+8. Replace `[YOUR_NAME]` and `[VAULT_PATH]` with your own info
 9. Save
 
 Test it: open a chat in the Bee Processor project and say:
@@ -117,7 +111,7 @@ The processor should read one raw file, propose three output files (tasks, meeti
 
 ## Step 5: Teach the GTD Assistant about Bee outputs
 
-Your main GTD project already has instructions for processing `00 Inbox/`. It needs a small update to recognize the Bee subfolder and the Meeting Notes references.
+Your main GTD project already has instructions for processing `00 Inbox/`. It needs a small update to recognize the Bee subfolder and the Meeting Notes reference.
 
 1. Open your main GTD project in Claude Desktop
 2. Edit the custom instructions
@@ -127,43 +121,70 @@ You don't need to do anything else. The GTD Assistant reads the already-processe
 
 ---
 
-## Step 6: Automated sync (Windows)
+## Step 6: Event-driven sync (the real-time piece)
 
-This repo ships PowerShell scripts that give you two layers of sync automation on Windows:
+Running `bee sync` manually is fine for trying it out, but the real win is having captures flow into Obsidian automatically as meetings end.
 
-- **Layer 1 -- scheduled sync every 15 min.** Simple, boring, reliable safety net. Your vault is never more than 15 minutes behind.
-- **Layer 2 -- event-driven watcher.** Listens to `bee stream --json` and triggers a targeted sync within ~30 seconds of each conversation completing.
+The Bee CLI has a `bee stream` command that emits live events. When a conversation completes, you can trigger a targeted sync of just that conversation.
 
-Both are safe to run together. Install them from a PowerShell prompt:
+### Option A — Simple: scheduled polling
 
-```powershell
-# From the repo root
-.\scripts\install-bee-sync-task.ps1          # Layer 1 - prompts for your _raw path on first run
-.\scripts\install-bee-watcher-autostart.ps1  # Layer 2 - reuses the Layer 1 config
-```
+If you want something minimal, schedule `bee sync` to run every 15 minutes.
 
-See [`scripts/README.md`](../scripts/README.md) for full details, verification commands, logs, and uninstall steps. The scripts require no admin/UAC elevation.
-
-### Mac and Linux
-
-Reference scripts for cron and `launchd` are planned. For now, the simplest Mac setup:
-
+**Mac (cron):**
 ```bash
 crontab -e
 # Add:
 */15 * * * * /usr/local/bin/bee sync --output "$HOME/path/to/vault/05 Reference/Bee/_raw" > /dev/null 2>&1
 ```
 
-For event-driven on Mac/Linux, run `bee stream --json` into a debounced shell script managed by `launchd` or `systemd --user`. PRs welcome.
+**Windows (Task Scheduler):**
 
+Create a scheduled task that runs this PowerShell command every 15 minutes:
+```powershell
+bee sync --output "C:\Users\YOUR_USERNAME\path\to\vault\05 Reference\Bee\_raw"
+```
 
-## Kiro users: automatic processing via hook
+### Option B — Event-driven: `bee stream` watcher
 
-If you use [Kiro](https://kiro.ai) alongside Claude Desktop, this repo includes a hook that auto-processes new Bee captures the moment they land in `_raw/`.
+A small watcher script runs `bee stream --json` in the background. When it sees an `update-conversation` event marking a conversation as complete, it runs a targeted sync.
 
-The hook lives at `.kiro/hooks/bee-process-new-capture.kiro.hook` and fires on `fileCreated` events matching `**/05 Reference/Bee/_raw/**/*.md`. It follows the processing rules in `.kiro/steering/bee-processing.md`, which mirror the Claude Desktop system prompt.
+A reference watcher script is planned for a future release of this repo. In the meantime, you can write your own — the event shape is documented in the [Bee Realtime docs](https://docs.bee.computer/docs/realtime).
 
-With Kiro open, you don't need to manually trigger the Bee Processor — Kiro handles it in the background and proposes the output files for your confirmation. See [`.kiro/README.md`](../.kiro/README.md) for how to wire this into your Kiro workspace.
+---
+
+## Kiro users: automatic processing via hooks
+
+If you use [Kiro](https://kiro.ai) alongside Claude Desktop, this repo includes two hooks for Bee processing:
+
+### Basic hook: `bee-process-new-capture.kiro.hook`
+
+Fires on `fileCreated` events matching `**/05 Reference/Bee/_raw/**/*.md`. Good if your vault is inside the Kiro workspace. Kiro processes the capture and proposes output files for your confirmation.
+
+### Advanced hook: `bee-sentinel-auto-process.kiro.hook` (recommended)
+
+Uses a sentinel-based pattern for when your vault lives **outside** the Kiro workspace (common with iCloud/OneDrive-synced vaults on Windows):
+
+```
+bee sync → writes raw to vault → writes sentinel to .kiro/bee-inbox/
+    → Kiro hook fires on sentinel creation
+    → stages raw capture into workspace for reading
+    → processes (redaction, tasks, notes, people)
+    → writes outputs to .kiro/bee-inbox/_output/
+    → runs sync script to copy outputs to vault (with append-mode for existing People notes)
+    → deletes sentinel and cleans staging
+```
+
+Key improvements over the basic hook:
+- **Staging pattern** — works even when the vault is on a different drive or in a cloud-synced folder
+- **Append-mode People notes** — updates existing bios without overwriting prior content
+- **Partial capture handling** — detects in-progress recordings and re-fires when complete
+- **Batch processing** — handles multiple sentinels in a single pass
+- **Voice Analysis (4th output)** — optionally updates a Writing Style Guide note with communication patterns observed in transcripts
+
+The sentinel hook works with the vault sync script at `scripts/apply-bee-outputs.template.ps1`. See that file for configuration instructions.
+
+Both hooks follow the processing rules in `.kiro/steering/bee-processing.md`.
 
 ---
 
@@ -177,7 +198,7 @@ Once captures are flowing, you can ask the GTD Assistant natural-language questi
 
 > "Pull up every meeting from the last two weeks where we discussed the Q2 roadmap."
 
-The assistant searches the Meeting Notes folders and the relevant `People/` notes via the Obsidian MCP. No direct connection to Bee's live API required — the processed markdown is the source.
+The assistant searches `05 Reference/Meeting Notes/` and the relevant `People/` notes via the Obsidian MCP. No direct connection to Bee's live API required — the processed markdown is the source.
 
 ---
 
@@ -185,7 +206,7 @@ The assistant searches the Meeting Notes folders and the relevant `People/` note
 
 Bee records conversations. The redaction policy in the Bee Processor system prompt uses judgment (not keyword matching) to exclude:
 
-- Intimate, romantic, or sexual content
+- Intimate/romantic/sexual content
 - Personal medical information
 - Family-private matters involving minors or finances
 - Third parties who clearly didn't consent to being recorded
