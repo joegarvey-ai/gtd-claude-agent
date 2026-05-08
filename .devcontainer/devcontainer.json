@@ -1,0 +1,31 @@
+{
+  "name": "Personal Assistant Kit",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+  "postCreateCommand": "cd evals && npm install && cd ../observability && npm install && cd ../validators && npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/sandbox/vault,target=/vault,type=bind"
+  ],
+  "containerEnv": {
+    "VAULT_PATH": "/vault",
+    "WORKSPACE_PATH": "/workspaces/personal-assistant-kit"
+  },
+  "forwardPorts": [],
+  "remoteUser": "node"
+}

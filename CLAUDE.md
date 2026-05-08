@@ -323,5 +323,5 @@ personal-assistant-kit/
 | 2. Evals | **Done** | Functional tests: `evals/` — 28 cases across 4 suites (inbox, Bee, review, status) |
 | 3. Observability | **Done** | `observability/` — structured logs, traces, cost metering, drift detection. Auto-integrated with eval runner. |
 | 4. Execution hooks | **Done** | `validators/` — schema, redaction, routing, idempotency, and continuation state management |
-| 5. Subagent routing | Planned | Model tiering (Haiku/Sonnet/Opus), parallel processing, dedicated subagents |
-| 6. Bundled infrastructure | Planned | Docker/devcontainer, config generator, mock MCP for offline testing |
+| 5. Subagent routing | Skipped | Not needed at current scale — revisit when evals show cost/latency bottlenecks |
+| 6. Bundled infrastructure | **Done** | `.devcontainer/`, `sandbox/`, `scripts/setup.mjs` — zero-config dev environment, test vault, interactive setup wizard |

@@ -125,7 +125,13 @@ People/                    ← Living bios of people you work with
 
 ### Setup (about 30 minutes)
 
-Pick your platform:
+**Quickest path — run the setup wizard:**
+
+```bash
+node scripts/setup.mjs
+```
+
+It asks your name, vault path, and which AI client you use, then generates all config files. Or follow the manual guides:
 
 - **Mac** → [SETUP-MAC.md](SETUP-MAC.md)
 - **Windows** → [SETUP-WINDOWS.md](SETUP-WINDOWS.md)
