@@ -21,6 +21,7 @@ credentials.json
 node_modules/
 evals/dist/
 observability/dist/
+validators/dist/
 
 # Runtime observability data (logs, metering, drift snapshots)
 _observability/

@@ -322,6 +322,6 @@ personal-assistant-kit/
 | 1. CLAUDE.md + agent architecture | **Done** | This file — the system contract |
 | 2. Evals | **Done** | Functional tests: `evals/` — 28 cases across 4 suites (inbox, Bee, review, status) |
 | 3. Observability | **Done** | `observability/` — structured logs, traces, cost metering, drift detection. Auto-integrated with eval runner. |
-| 4. Execution hooks | Planned | Schema validation, continuation gates, redaction validators, idempotency guards |
+| 4. Execution hooks | **Done** | `validators/` — schema, redaction, routing, idempotency, and continuation state management |
 | 5. Subagent routing | Planned | Model tiering (Haiku/Sonnet/Opus), parallel processing, dedicated subagents |
 | 6. Bundled infrastructure | Planned | Docker/devcontainer, config generator, mock MCP for offline testing |
