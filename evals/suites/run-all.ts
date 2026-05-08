@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { finalizeMeter } from "../lib/runner.js";
 
 const suites = [
   { name: "Inbox Routing", script: "suites/inbox-routing.ts" },
@@ -44,4 +45,5 @@ console.log(
 );
 console.log("╚══════════════════════════════════════════╝");
 
+finalizeMeter();
 process.exit(totalFailed > 0 ? 1 : 0);

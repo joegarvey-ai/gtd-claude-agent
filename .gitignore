@@ -20,6 +20,10 @@ credentials.json
 # Node
 node_modules/
 evals/dist/
+observability/dist/
+
+# Runtime observability data (logs, metering, drift snapshots)
+_observability/
 
 # Local-only work content (not for public repo)
 Decision Making/

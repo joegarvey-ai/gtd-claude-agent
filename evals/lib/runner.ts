@@ -2,9 +2,19 @@ import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { createLogger, createMeter, recordEvalSnapshot, type AgentRole } from "../../observability/src/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../..");
+const OBS_DIR = resolve(ROOT, "_observability");
+
+const logger = createLogger({
+  logDir: resolve(OBS_DIR, "logs"),
+  agent: "eval-runner" as AgentRole,
+  stdout: process.env.VERBOSE === "1",
+});
+
+const meter = createMeter(resolve(OBS_DIR, "metering"), "eval-runner" as AgentRole);
 
 export interface EvalCase {
   name: string;
@@ -157,6 +167,21 @@ export async function runEval(evalCase: EvalCase): Promise<EvalResult> {
   const assertionResults = evalCase.assertions.map((a) => checkAssertion(text, a));
   const passed = assertionResults.every((r) => r.passed);
 
+  // Record metering
+  meter.record({
+    operation: evalCase.name,
+    model: "claude-sonnet-4-20250514",
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    cacheHits: (response.usage as unknown as Record<string, number>).cache_read_input_tokens ?? 0,
+    durationMs,
+  });
+
+  logger.info("eval-case", `${passed ? "PASS" : "FAIL"}: ${evalCase.name}`, {
+    durationMs,
+    tokens: { input: response.usage.input_tokens, output: response.usage.output_tokens },
+  });
+
   return {
     name: evalCase.name,
     passed,
@@ -227,4 +252,22 @@ export function printSuiteResult(result: SuiteResult): void {
   );
   console.log(`Duration: ${(result.totalDurationMs / 1000).toFixed(1)}s`);
   console.log("");
+
+  // Record drift snapshot
+  recordEvalSnapshot(resolve(OBS_DIR, "metering"), {
+    timestamp: new Date().toISOString(),
+    suite: result.suite,
+    totalCases: result.passed + result.failed,
+    passed: result.passed,
+    failed: result.failed,
+    passRate: result.passed / (result.passed + result.failed),
+    failedCases: result.results.filter((r) => !r.passed).map((r) => r.name),
+    totalInputTokens: result.totalInputTokens,
+    totalOutputTokens: result.totalOutputTokens,
+    totalDurationMs: result.totalDurationMs,
+  });
+}
+
+export function finalizeMeter(): void {
+  meter.finalize();
 }
