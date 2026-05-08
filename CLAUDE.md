@@ -320,7 +320,7 @@ personal-assistant-kit/
 | Phase | Status | What it delivers |
 |-------|--------|-----------------|
 | 1. CLAUDE.md + agent architecture | **Done** | This file — the system contract |
-| 2. Evals | Next | Functional tests for inbox routing, Bee processing, weekly review, status updates |
+| 2. Evals | **Done** | Functional tests: `evals/` — 28 cases across 4 suites (inbox, Bee, review, status) |
 | 3. Observability | Planned | Logs, traces, cost/latency metering, drift detection |
 | 4. Execution hooks | Planned | Schema validation, continuation gates, redaction validators, idempotency guards |
 | 5. Subagent routing | Planned | Model tiering (Haiku/Sonnet/Opus), parallel processing, dedicated subagents |
