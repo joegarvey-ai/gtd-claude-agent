@@ -68,10 +68,10 @@ You don't need to be technical. The setup guides assume no coding experience. Yo
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Your AI Assistant                         │
-│              (Claude Desktop, Kiro, or any MCP client)        │
+│                     Your AI Assistant                       │
+│              (Claude Desktop, Kiro, or any MCP client)      │
 ├─────────────────────────────────────────────────────────────┤
-│                   Model Context Protocol                      │
+│                   Model Context Protocol                    │
 ├──────────┬──────────┬──────────┬──────────┬─────────────────┤
 │ Obsidian │  Email   │ Calendar │  Slack   │  PM Tool / etc  │
 │  (vault) │          │          │ (drafts) │                 │
@@ -157,7 +157,7 @@ When a Bee recording finishes, the pipeline produces three outputs:
 ```markdown
 - [ ] **Complete audit of expanded-scope products** — scope resourcing needs before May 27 meeting
 - [ ] **Implement time-boxing defaults in Close the Loop** — 30-60 day rolling window; gate leadership rollout on this
-- [ ] **Follow up with Grace on beta testing** — integrate Common Room data source this month
+- [ ] **Follow up with Jim on beta testing** — integrate Common Room data source this month
 ```
 
 **Meeting notes** (`05 Reference/Meeting Notes/2026-05-07_weekly-sync.md`):
@@ -172,11 +172,11 @@ Weekly sync covering team transitions, engagement strategy, and infrastructure p
 - Data consistency concerns gate leadership rollout of new tool
 
 ## Things to Keep in Mind
-- New engineers took over from Pedro; latency issues resolved
+- New engineers took over from Simon; latency issues resolved
 - Promotion review deadline May 21 for 6-7 cases
 ```
 
-**People notes** (`People/Will McHenry.md`):
+**People notes** (`People/John Smith.md`):
 ```markdown
 ## Communication Style
 Warm and personable in 1:1 settings. Opens with genuine personal connection before work.
