@@ -1,0 +1,66 @@
+name: Evals
+
+# Runs the functional eval suites against the SHIPPED prompt/steering artifacts.
+# The suites call the Claude API, so they need an ANTHROPIC_API_KEY secret and
+# cost a small amount per run. To avoid spurious failures where the secret isn't
+# available (forks, PRs from forks), the run is gated on the secret being present.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "evals/**"
+      - "system-prompt.md"
+      - "system-prompt-bee-processor.md"
+      - ".kiro/hooks/**"
+      - ".github/workflows/evals.yml"
+  pull_request:
+    paths:
+      - "evals/**"
+      - "system-prompt.md"
+      - "system-prompt-bee-processor.md"
+      - ".kiro/hooks/**"
+  workflow_dispatch: {}
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for API key
+        id: gate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ANTHROPIC_API_KEY not set — skipping evals (expected on forks)."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        if: steps.gate.outputs.run == 'true'
+        working-directory: evals
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        if: steps.gate.outputs.run == 'true'
+        working-directory: evals
+        run: npx tsc --noEmit
+
+      - name: Run eval suites
+        if: steps.gate.outputs.run == 'true'
+        working-directory: evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Pin the eval model here if the default in runner.ts should be overridden.
+          # EVAL_MODEL: claude-sonnet-5
+        run: npm run eval

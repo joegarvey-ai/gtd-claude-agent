@@ -34,8 +34,14 @@ export interface SessionSummary {
   }>;
 }
 
-// Pricing per million tokens (as of May 2026, Sonnet 4)
+// Pricing per million tokens. Current models first; legacy keys kept so historical
+// metering data still prices correctly. cacheRead ~= 0.1x input.
 const PRICING: Record<string, { input: number; output: number; cacheRead: number }> = {
+  // Current
+  "claude-sonnet-5": { input: 3.0, output: 15.0, cacheRead: 0.30 },
+  "claude-opus-4-8": { input: 5.0, output: 25.0, cacheRead: 0.50 },
+  "claude-haiku-4-5": { input: 1.0, output: 5.0, cacheRead: 0.10 },
+  // Legacy (retained for old data)
   "claude-sonnet-4-20250514": { input: 3.0, output: 15.0, cacheRead: 0.30 },
   "claude-haiku-4-5-20251001": { input: 0.80, output: 4.0, cacheRead: 0.08 },
   "claude-opus-4-20250514": { input: 15.0, output: 75.0, cacheRead: 1.50 },

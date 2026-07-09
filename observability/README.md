@@ -83,7 +83,7 @@ const meter = createMeter("./_observability/metering", "gtd-assistant");
 
 meter.record({
   operation: "inbox-processing",
-  model: "claude-sonnet-4-20250514",
+  model: "claude-sonnet-5",
   inputTokens: 4200,
   outputTokens: 1100,
   cacheHits: 2800,

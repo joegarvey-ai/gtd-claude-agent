@@ -1,26 +1,22 @@
-import { EvalCase, runSuite, printSuiteResult, loadFixture } from "../lib/runner.js";
+import { EvalCase, runSuite, printSuiteResult, loadFixture, loadHookPrompt } from "../lib/runner.js";
 
 const taskData = loadFixture("task-data-status.md");
 
-const STATUS_PROMPT = `You are a weekly status update assistant. Given task data, draft status updates for each task.
+// Test the SHIPPED contract: the weekly-status-update Kiro hook, not an inline
+// re-implementation of its rules. The hook's Step 0 gathers identity/sprint/scope
+// interactively; since this is a single-shot eval, we supply those answers in the
+// user message so the model proceeds to the drafting steps (4-7) the assertions check.
+const STATUS_PROMPT = loadHookPrompt(".kiro/hooks/weekly-status-update.kiro.hook");
 
-Rules:
-- Date prefix in M/D format (e.g., 5/7)
-- Use '-' bullets only
-- FULL NAMES of people, never @handles
-- Plain text, no em dashes
-- Risks/Dependencies section only when blockers exist
-- For closed tasks in last 7 days, include CLOSED
-- For tasks with NO CONTEXT (no comments, no activity), flag with [!] NO CONTEXT — do NOT fabricate status
-- Prepend new content to existing updates (newest on top)
-
-Today's date: 2026-05-07`;
+const RUNTIME_PARAMS =
+  "Runtime parameters are already resolved — username: joe; sprint: current; scope: assigned. " +
+  "Today's date: 2026-05-07. Skip Step 0 (do not ask for these) and draft the updates directly from the task data below.";
 
 const cases: EvalCase[] = [
   {
     name: "Drafts update for active task with context (blog migration)",
     systemPromptOverride: STATUS_PROMPT,
-    userMessage: `Draft status updates for today based on this task data:\n\n${taskData}`,
+    userMessage: `${RUNTIME_PARAMS}\n\nDraft status updates for today based on this task data:\n\n${taskData}`,
     assertions: [
       {
         type: "contains",
@@ -47,7 +43,7 @@ const cases: EvalCase[] = [
   {
     name: "Flags task with no context",
     systemPromptOverride: STATUS_PROMPT,
-    userMessage: `Draft status updates for today based on this task data:\n\n${taskData}`,
+    userMessage: `${RUNTIME_PARAMS}\n\nDraft status updates for today based on this task data:\n\n${taskData}`,
     assertions: [
       {
         type: "contains",
@@ -64,7 +60,7 @@ const cases: EvalCase[] = [
   {
     name: "Does NOT fabricate status for unknown task",
     systemPromptOverride: STATUS_PROMPT,
-    userMessage: `Draft a status update specifically for PROJ-160 (API redesign architecture review). Here's the task data:\n\n${taskData}`,
+    userMessage: `${RUNTIME_PARAMS}\n\nDraft a status update specifically for PROJ-160 (API redesign architecture review). Here's the task data:\n\n${taskData}`,
     assertions: [
       {
         type: "not_contains",
@@ -86,7 +82,7 @@ const cases: EvalCase[] = [
   {
     name: "Marks closed task correctly",
     systemPromptOverride: STATUS_PROMPT,
-    userMessage: `Draft status updates for today based on this task data:\n\n${taskData}`,
+    userMessage: `${RUNTIME_PARAMS}\n\nDraft status updates for today based on this task data:\n\n${taskData}`,
     assertions: [
       {
         type: "contains",
@@ -103,7 +99,7 @@ const cases: EvalCase[] = [
   {
     name: "Includes risks/dependencies for blocked task",
     systemPromptOverride: STATUS_PROMPT,
-    userMessage: `Draft status updates for today based on this task data:\n\n${taskData}`,
+    userMessage: `${RUNTIME_PARAMS}\n\nDraft status updates for today based on this task data:\n\n${taskData}`,
     assertions: [
       {
         type: "contains",
@@ -120,7 +116,7 @@ const cases: EvalCase[] = [
   {
     name: "Uses dash bullets, not asterisks or numbers",
     systemPromptOverride: STATUS_PROMPT,
-    userMessage: `Draft status updates for today based on this task data:\n\n${taskData}`,
+    userMessage: `${RUNTIME_PARAMS}\n\nDraft status updates for today based on this task data:\n\n${taskData}`,
     assertions: [
       {
         type: "matches",
@@ -137,7 +133,7 @@ const cases: EvalCase[] = [
   {
     name: "Never uses @handle format",
     systemPromptOverride: STATUS_PROMPT,
-    userMessage: `Draft status updates for today based on this task data:\n\n${taskData}`,
+    userMessage: `${RUNTIME_PARAMS}\n\nDraft status updates for today based on this task data:\n\n${taskData}`,
     assertions: [
       {
         type: "not_contains",

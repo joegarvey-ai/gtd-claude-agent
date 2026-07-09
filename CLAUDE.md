@@ -358,7 +358,7 @@ Be precise about what actually runs *inside the agent* versus what is *offline d
 | Bee sync `scripts/*.ps1` | Windows Task Scheduler / login automation | **Yes** — but as OS processes, not inside the agent |
 | `validators/` | TS CLI: schema / redaction / routing / idempotency checks | **No** — offline CLI you run against the vault; nothing calls it at agent runtime |
 | `observability/` | TS logging / tracing / metering / drift | **No** — only the offline eval runner imports it; it does not observe live agent turns |
-| `evals/` | TS harness calling the Claude API with fixtures | **No** — offline test suite you run from a terminal |
+| `evals/` | TS harness calling the Claude API with fixtures | **No** — offline test suite; runs in CI against the shipped prompts, not during an agent turn |
 
 The TS subsystems are useful **offline** (run them in CI or by hand to check the vault and prompts). They are not runtime middleware, and nothing in the agent loop invokes them. Don't describe them as if they gate or instrument live behavior.
 
@@ -371,10 +371,10 @@ The TS subsystems are useful **offline** (run them in CI or by hand to check the
 | CLAUDE.md + agent architecture | Built | This file — the system contract | Runtime (read by the agent) |
 | Daily Triage + GTD workflows | Built | `system-prompt.md` + `.kiro/steering/gtd-assistant.md` | Runtime |
 | Bee pipeline | Built | sync scripts + processing steering + hooks (auto + manual) | OS automation + runtime |
-| Evals | Built (offline) | `evals/` — ~28 cases across 4 suites (inbox, Bee, review, status) | Offline CLI, no CI yet |
+| Evals | Built (offline, CI-gated) | `evals/` — 5 suites (inbox, Bee, review, status, confirm-before-write) against the shipped prompts/hooks | Offline CLI + GitHub Actions (`.github/workflows/evals.yml`) |
 | Observability | Built (offline) | `observability/` — logs, traces, metering, drift | Offline; imported only by the eval runner |
 | Validators | Built (offline) | `validators/` — schema, redaction, routing, idempotency, continuation | Offline CLI; **not** invoked at agent runtime |
 | Bundled infrastructure | Built | `.devcontainer/`, `sandbox/`, `scripts/setup.mjs` | Dev-time |
 | Subagent routing | Not built | Deferred — revisit if evals show cost/latency bottlenecks | — |
 
-> Honesty note: the offline subsystems were previously labeled "Done / Auto-integrated," implying they enforce invariants and observe cost/quality on the live agent. They do not — see "Runtime vs. offline tooling" above. Making them real gates (CI running evals against the shipped prompts; validators as a pre-commit/scheduled vault check) is tracked separately.
+> Honesty note: the offline subsystems were previously labeled "Done / Auto-integrated," implying they enforce invariants and observe cost/quality on the live agent. They do not — see "Runtime vs. offline tooling" above. The evals now run in CI against the shipped prompts/hooks (`.github/workflows/evals.yml`), including a real tool-use gate; validators as a pre-commit/scheduled vault check remain a manual step.

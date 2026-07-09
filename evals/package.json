@@ -8,7 +8,8 @@
     "eval:inbox": "tsx suites/inbox-routing.ts",
     "eval:bee": "tsx suites/bee-processing.ts",
     "eval:review": "tsx suites/weekly-review.ts",
-    "eval:status": "tsx suites/status-updates.ts"
+    "eval:status": "tsx suites/status-updates.ts",
+    "eval:confirm": "tsx suites/confirm-before-write.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

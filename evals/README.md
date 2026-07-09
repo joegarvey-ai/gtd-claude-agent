@@ -1,8 +1,8 @@
 # Evals
 
-> **Offline test harness — you run it, nothing runs it for you.** These call the Claude API with synthetic fixtures (no live MCP, no real vault) and are **not** wired into CI, so they don't gate commits or the shipped prompts today. Two caveats worth knowing: (1) some suites test prompt text inline rather than importing the exact shipped `system-prompt.md`/steering, and (2) the suites check the model's prose *about* an action — they don't exercise real tool use or the propose/confirm/write loop. Making these a real gate (CI against the shipped artifacts; a tool-use case) is planned — see CLAUDE.md, "Runtime vs. offline tooling."
+> **Offline test harness that gates the shipped artifacts.** These call the Claude API with synthetic fixtures (no live MCP, no real vault). They run in CI (`.github/workflows/evals.yml`) on changes to `evals/`, the shipped prompts, or the hooks — gated on an `ANTHROPIC_API_KEY` secret, so forks without the secret skip rather than fail. Every suite loads a **shipped** artifact: the prose suites read `system-prompt.md` / `system-prompt-bee-processor.md`, the status suite reads the actual `weekly-status-update.kiro.hook` prompt, and `confirm-before-write` exercises a real tool-use turn to verify the propose/confirm/write gate. Note: the suites load the public **Claude Desktop** artifacts, not the gitignored personal `.kiro/steering/*.md` (which can't run in CI) — see CLAUDE.md, "Runtime vs. offline tooling."
 
-Functional tests that check the Personal Assistant Kit's system prompts produce correct behavior against synthetic fixtures.
+Functional tests that check the Personal Assistant Kit's shipped prompts and hooks produce correct behavior against synthetic fixtures.
 
 ## Setup
 
@@ -24,10 +24,11 @@ export ANTHROPIC_API_KEY=sk-ant-...
 npm run eval
 
 # Individual suites
-npm run eval:inbox    # Inbox routing (7 cases)
+npm run eval:inbox    # Inbox routing (8 cases, incl. batch against shipped prompt)
 npm run eval:bee      # Bee capture processing (7 cases)
 npm run eval:review   # Weekly review (7 cases)
-npm run eval:status   # Status updates (7 cases)
+npm run eval:status   # Status updates (7 cases, against the shipped hook prompt)
+npm run eval:confirm  # Confirm-before-write (tool-use gate — real tool_use turn)
 ```
 
 ## What's being tested
@@ -91,4 +92,4 @@ Each full run makes ~28 Claude API calls (Sonnet). Typical cost: ~$0.10-0.20 per
 
 ## Model
 
-Evals run against `claude-sonnet-4-20250514` by default. This is intentional — evals should pass on Sonnet; if they only pass on Opus, the system prompt needs improvement. Change the model in `lib/runner.ts` if needed.
+Evals run against `claude-sonnet-5` by default (override with the `EVAL_MODEL` env var). This is intentional — evals should pass on Sonnet; if they only pass on Opus, the system prompt needs improvement. Thinking is disabled in the runner so evals stay deterministic and comparable to the shipped single-shot agent.

@@ -2,15 +2,6 @@ import { EvalCase, runSuite, printSuiteResult, loadFixture } from "../lib/runner
 
 const inboxItems = loadFixture("inbox-items.md");
 
-const ROUTING_PROMPT = `You are evaluating inbox items for a GTD (Getting Things Done) system.
-
-For each item, respond with ONLY a JSON array. Each element should have:
-- "item": the filename
-- "route": one of "01 Next Actions/Quick Wins", "01 Next Actions/Deep Work", "02 Personal Projects", "03 Family & Personal Planning", "04 Someday Maybe", "05 Reference", "06 Waiting For"
-- "reasoning": one sentence explaining why
-
-Do not include any other text outside the JSON array.`;
-
 const cases: EvalCase[] = [
   {
     name: "Routes quick task to Quick Wins",
@@ -97,19 +88,27 @@ const cases: EvalCase[] = [
     ],
   },
   {
-    name: "Batch routing produces correct structure",
-    systemPromptOverride: ROUTING_PROMPT,
-    userMessage: `Route all of the following inbox items:\n\n${inboxItems}`,
+    // Repointed to the SHIPPED system-prompt.md (was an inline JSON-only prompt).
+    // The shipped prompt routes each item and suggests before moving, so assert on
+    // the GTD folder vocabulary it actually produces rather than a strict JSON shape.
+    name: "Batch routing covers all items with valid GTD destinations",
+    systemPromptFile: "system-prompt.md",
+    userMessage: `Process all of the following inbox items. For each, tell me which GTD folder it should go to.\n\n${inboxItems}`,
     assertions: [
       {
-        type: "contains",
-        value: "quick-task",
-        description: "Batch response references all items",
+        type: "matches",
+        value: "Quick Wins",
+        description: "Routes a quick task to Quick Wins",
       },
       {
-        type: "contains",
-        value: "waiting-for",
-        description: "Batch response includes waiting-for item",
+        type: "matches",
+        value: "Waiting For",
+        description: "Routes the blocked item to Waiting For",
+      },
+      {
+        type: "matches",
+        value: "Someday",
+        description: "Routes a non-urgent interest to Someday Maybe",
       },
       {
         type: "not_contains",

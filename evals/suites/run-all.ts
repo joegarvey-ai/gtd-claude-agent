@@ -6,6 +6,7 @@ const suites = [
   { name: "Bee Processing", script: "suites/bee-processing.ts" },
   { name: "Weekly Review", script: "suites/weekly-review.ts" },
   { name: "Status Updates", script: "suites/status-updates.ts" },
+  { name: "Confirm Before Write", script: "suites/confirm-before-write.ts" },
 ];
 
 console.log("╔══════════════════════════════════════════╗");

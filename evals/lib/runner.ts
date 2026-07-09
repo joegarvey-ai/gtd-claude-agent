@@ -60,9 +60,29 @@ export interface SuiteResult {
 
 const client = new Anthropic();
 
+// Single source of truth for the eval model. Override with EVAL_MODEL if needed.
+// claude-sonnet-4-20250514 was deprecated (retires 2026-06-15); claude-sonnet-5
+// is its replacement. Evals should pass on Sonnet — if they only pass on Opus,
+// the prompt needs improvement.
+const MODEL = process.env.EVAL_MODEL ?? "claude-sonnet-5";
+
 export function loadSystemPrompt(filename: string): string {
   const path = resolve(ROOT, filename);
   return readFileSync(path, "utf-8");
+}
+
+// Load the actual prompt shipped inside a Kiro hook (.kiro.hook JSON), so a suite
+// can test the real hook contract instead of an inline re-implementation. The
+// status-update behavior, for example, lives in weekly-status-update.kiro.hook —
+// there is no standalone system-prompt file for it.
+export function loadHookPrompt(hookRelPath: string): string {
+  const path = resolve(ROOT, hookRelPath);
+  const hook = JSON.parse(readFileSync(path, "utf-8"));
+  const prompt = hook?.then?.prompt;
+  if (typeof prompt !== "string") {
+    throw new Error(`Hook ${hookRelPath} has no then.prompt string`);
+  }
+  return prompt;
 }
 
 export function loadFixture(fixturePath: string): string {
@@ -152,8 +172,12 @@ export async function runEval(evalCase: EvalCase): Promise<EvalResult> {
   const start = Date.now();
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: MODEL,
     max_tokens: 4096,
+    // Disable thinking: Sonnet 5 runs adaptive thinking by default, which would
+    // change eval behavior vs. the shipped single-shot agent and can consume the
+    // token budget. Keep evals deterministic and comparable.
+    thinking: { type: "disabled" },
     system: fullSystem,
     messages: [{ role: "user", content: evalCase.userMessage }],
   });
@@ -170,7 +194,7 @@ export async function runEval(evalCase: EvalCase): Promise<EvalResult> {
   // Record metering
   meter.record({
     operation: evalCase.name,
-    model: "claude-sonnet-4-20250514",
+    model: MODEL,
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
     cacheHits: (response.usage as unknown as Record<string, number>).cache_read_input_tokens ?? 0,
@@ -191,6 +215,71 @@ export async function runEval(evalCase: EvalCase): Promise<EvalResult> {
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
   };
+}
+
+// --- Tool-use harness ---------------------------------------------------
+// The eval cases above judge the model's PROSE. This lets a suite exercise a real
+// tool-use turn and inspect whether the model emitted a tool_use block — the only
+// way to test the propose/confirm/write gate (does the model WRITE before the user
+// confirms?). Returns the raw content blocks so the suite can assert on tool calls.
+
+export interface ToolTurnResult {
+  toolUses: { name: string; input: Record<string, unknown> }[];
+  text: string;
+  stopReason: string | null;
+}
+
+// Run one assistant turn with tools available. `history` is the running message
+// array (mutated: the assistant response is appended so the caller can continue).
+export async function runToolTurn(
+  systemPromptFile: string,
+  history: Anthropic.MessageParam[],
+  tools: Anthropic.Tool[]
+): Promise<ToolTurnResult> {
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 4096,
+    thinking: { type: "disabled" },
+    system: loadSystemPrompt(systemPromptFile),
+    tools,
+    messages: history,
+  });
+
+  history.push({ role: "assistant", content: response.content });
+
+  const toolUses = response.content
+    .filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use")
+    .map((b) => ({ name: b.name, input: b.input as Record<string, unknown> }));
+  const text = response.content
+    .filter((b) => b.type === "text")
+    .map((b) => (b as Anthropic.TextBlock).text)
+    .join("\n");
+
+  meter.record({
+    operation: "tool-turn",
+    model: MODEL,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    cacheHits: (response.usage as unknown as Record<string, number>).cache_read_input_tokens ?? 0,
+    durationMs: 0,
+  });
+
+  return { toolUses, text, stopReason: response.stop_reason };
+}
+
+// Append tool_result blocks so the conversation can continue after a tool call.
+export function pushToolResults(
+  history: Anthropic.MessageParam[],
+  results: { tool_use_id: string; content: string }[]
+): void {
+  history.push({
+    role: "user",
+    content: results.map((r) => ({
+      type: "tool_result" as const,
+      tool_use_id: r.tool_use_id,
+      content: r.content,
+    })),
+  });
 }
 
 export async function runSuite(
