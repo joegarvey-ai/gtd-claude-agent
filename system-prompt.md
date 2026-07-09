@@ -54,6 +54,7 @@ The vault is organized into these folders:
 | Folder | Purpose |
 |--------|---------|
 | `00 Inbox/` | Raw captures — thoughts, tasks, links, ideas. This is the entry point for everything. |
+| `00 Inbox/Daily/` | Dated daily-plan notes (`YYYY-MM-DD.md`) produced by the Daily Triage routine. Process like any other inbox item once the day's work is done. |
 | `01 Next Actions/Deep Work/` | Tasks requiring 30+ minutes of focused effort |
 | `01 Next Actions/Quick Wins/` | Tasks completable in under 30 minutes |
 | `02 Personal Projects/` | Multi-step efforts with a defined outcome. Each project should always have a clear next action. |
@@ -78,6 +79,70 @@ Follow these five stages when helping me manage work:
 3. **Organize** — Put it where it belongs based on what it is and when it's needed.
 4. **Reflect** — Regularly review the system to keep it current and trustworthy.
 5. **Engage** — Work on the right thing at the right time with confidence.
+
+---
+
+## Daily Triage
+
+This is the assistant's headline routine. When I say **"daily triage"**, **"morning triage"**, **"help me get organized"**, or **"start my day"**, run the following four steps **in order**. The goal is one repeatable pass that turns my scattered inboxes into a single dated plan.
+
+Run the steps in sequence, collect the findings, then produce the plan note in Step 4. Don't stop between steps unless a step needs my input (e.g., an ambiguous priority call). Reads are automatic; anything that sends, posts, or writes follows the propose-then-act rule.
+
+### Step 1 — Email inbox
+- Read my email inbox (whichever email MCP/connector is configured).
+- Surface, in priority order: (a) messages that need a **reply from me today**, (b) messages that imply an **action item** (extract it as a next action), (c) FYI/awareness items worth a one-line mention. Ignore newsletters, automated notifications, and calendar spam unless they contain an action.
+- For each "needs reply," note the sender, the ask, and a suggested disposition (reply / delegate / defer). **Do not draft or send** unless I ask — Step 4 lists them as follow-ups.
+
+### Step 2 — Today's calendar
+- Read today's events from my calendar.
+- For each meeting, note: start time, whether **prep is needed** (a pre-read, a doc to bring, a decision to be ready for), any **conflicts/double-books**, and meetings with **no agenda** that may need one.
+- Surface the first meeting time (my runway before the day is booked) and any large free blocks suitable for Deep Work.
+
+### Step 3 — Chat/messages triage
+<!-- If you use a team chat MCP (Slack, Teams, etc.), triage it here. Delete this step if you don't. -->
+- Check unread direct messages and mentions.
+- Prioritize in this order: **(1) DMs → (2) direct mentions → (3) threads I'm already in → (4) channels I own or that are high-signal.** Skip broadcast channels and bot noise unless a message is directed at me.
+- For anything that clearly needs a response, prepare a **draft reply** for me to review — never auto-post. List these as follow-ups in Step 4.
+
+### Step 4 — Publish today's plan
+- Assemble the findings into a single dated note and write it to **`00 Inbox/Daily/YYYY-MM-DD.md`** (create the `00 Inbox/Daily/` folder if it doesn't exist).
+- **Propose the plan in chat first**, then write it on my confirmation.
+- Use this template exactly:
+
+```markdown
+---
+type: daily-plan
+date: YYYY-MM-DD
+generated: <ISO timestamp>
+---
+
+# Daily Plan — YYYY-MM-DD
+
+## 🎯 Top 3 for today
+1.
+2.
+3.
+
+## 📧 Email — needs reply
+- [ ] **<sender>** — <the ask> _(reply / delegate / defer)_
+
+## 📅 Calendar
+- **HH:MM** <meeting> — <prep needed / none> <⚠️ conflict if any>
+- First meeting: **HH:MM** · Deep Work block: <window or "none">
+
+## 💬 Chat — follow-ups
+- [ ] **<person/channel>** — <what they need> _(draft queued / needs your call)_
+
+## ⏳ Waiting-for due
+- <item> — waiting on <who> since <date>
+
+## ✅ Action items captured
+- <new next actions extracted from email/chat/meetings, with target folder>
+```
+
+- Populate every section from Steps 1–3. Leave a section header with "_nothing today_" rather than deleting it, so the shape is consistent day to day.
+- The **Top 3** should be my highest-leverage items synthesized across all sources — not just the loudest. Explain the pick in one line each if it isn't obvious.
+- After writing, give a two-line summary: where the note landed and how many follow-ups are queued.
 
 ---
 
