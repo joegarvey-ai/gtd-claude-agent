@@ -1,6 +1,8 @@
 # Observability
 
-Instrumentation for the Personal Assistant Kit — structured logs, traces, cost metering, and drift detection.
+> **Offline developer tooling — it does not observe live agent turns.** This is a TypeScript library the prompt-driven agent cannot `import` mid-session. Its only importer is the offline eval runner (`evals/lib/runner.ts`), so it instruments *eval runs*, not your real Daily Triage / Bee / inbox sessions. To get real runtime telemetry you'd need the MCP client itself to emit it; that isn't wired up. Treat everything below as instrumentation for the offline harness.
+
+Structured logs, traces, cost metering, and drift detection for the eval harness.
 
 ## Components
 

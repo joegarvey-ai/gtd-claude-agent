@@ -155,34 +155,36 @@ A reference watcher script is planned for a future release of this repo. In the 
 
 ## Kiro users: automatic processing via hooks
 
-If you use [Kiro](https://kiro.ai) alongside Claude Desktop, this repo includes two hooks for Bee processing:
+If you use [Kiro](https://kiro.ai) alongside Claude Desktop, this repo includes two hooks for Bee processing — an automatic one and a manual fallback.
 
-### Basic hook: `bee-process-new-capture.kiro.hook`
+### Auto hook: `bee-sentinel-auto-process.kiro.hook`
 
-Fires on `fileCreated` events matching `**/05 Reference/Bee/_raw/**/*.md`. Good if your vault is inside the Kiro workspace. Kiro processes the capture and proposes output files for your confirmation.
-
-### Advanced hook: `bee-sentinel-auto-process.kiro.hook` (recommended)
-
-Uses a sentinel-based pattern for when your vault lives **outside** the Kiro workspace (common with iCloud/OneDrive-synced vaults on Windows):
+Fires on `fileCreated` for `.kiro/bee-inbox/*.sentinel.md` — the sentinel the sync scripts write when a capture lands. Uses a sentinel-based pattern so it works even when your vault lives **outside** the Kiro workspace (common with iCloud/OneDrive-synced vaults on Windows):
 
 ```
 bee sync → writes raw to vault → writes sentinel to .kiro/bee-inbox/
     → Kiro hook fires on sentinel creation
-    → stages raw capture into workspace for reading
-    → processes (redaction, tasks, notes, people)
-    → writes outputs to .kiro/bee-inbox/_output/
-    → runs sync script to copy outputs to vault (with append-mode for existing People notes)
-    → deletes sentinel and cleans staging
+    → for each pending sentinel:
+        idempotency guard (skip if already processed)
+        skip if the capture is still CAPTURING (partial)
+        process (redaction, tasks, notes, people)
+        write the three outputs to the vault
+        delete the sentinel — only after outputs land
 ```
 
-Key improvements over the basic hook:
-- **Staging pattern** — works even when the vault is on a different drive or in a cloud-synced folder
-- **Append-mode People notes** — updates existing bios without overwriting prior content
-- **Partial capture handling** — detects in-progress recordings and re-fires when complete
-- **Batch processing** — handles multiple sentinels in a single pass
-- **Voice Analysis (4th output)** — optionally updates a Writing Style Guide note with communication patterns observed in transcripts
+> **Reliability caveat:** Kiro agent hooks only fire while the Kiro workspace is open, and a background file write (from the scheduled sync) doesn't always trigger them. So treat this hook as *best-effort* — if sentinels pile up in `.kiro/bee-inbox/`, use the manual command below.
 
-The sentinel hook works with the vault sync script at `scripts/apply-bee-outputs.template.ps1`. See that file for configuration instructions.
+### Manual fallback: `bee-process-inbox.kiro.hook` (reliable)
+
+A `userTriggered` hook — click it in Kiro, or say **"process my Bee inbox."** It runs the exact same close-the-loop logic as the auto hook but over **all** pending sentinels in one pass, so it's the guaranteed way to drain a backlog. This is the recommended day-to-day path given the auto-hook caveat above.
+
+Feature notes (both hooks):
+- **Idempotency guard** — a capture already written to the vault (matched by `bee_conversation_id`) is skipped, not duplicated.
+- **Partial capture handling** — an in-progress recording is left for the next sync to re-fire when complete.
+- **Append-mode People notes** — existing bios are updated, not overwritten.
+- **Batch processing** — multiple sentinels handled in a single pass.
+
+When the vault lives outside the workspace and the agent can't write it directly via MCP, outputs are staged to `.kiro/bee-inbox/_output/` and the last-mile vault write is done by `scripts/apply-bee-outputs.template.ps1` (see that file for configuration). Either way, a sentinel is deleted only after its outputs land.
 
 Both hooks follow the processing rules in `.kiro/steering/bee-processing.md`.
 

@@ -1,6 +1,6 @@
 # Kiro Automation for GTD Claude Agent
 
-This directory contains [Kiro](https://kiro.ai) workspace configuration that complements the Claude Desktop setup. If you use Kiro alongside Claude Desktop, dropping this folder into your workspace gives you **fully hands-off** Bee capture processing — new meetings flow from your wearable into clean, structured Obsidian notes with no prompting.
+This directory contains [Kiro](https://kiro.ai) workspace configuration that complements the Claude Desktop setup. If you use Kiro alongside Claude Desktop, dropping this folder into your workspace gives you **near-hands-off** Bee capture processing — new meetings flow from your wearable into clean, structured Obsidian notes. An auto-hook attempts this on its own (best-effort — Kiro hooks only fire while the workspace is open), and a one-click manual command ("process my Bee inbox") reliably drains anything the auto-hook missed.
 
 If you don't use Kiro, ignore this directory. The Claude Desktop flow documented in the main README works standalone.
 
@@ -9,7 +9,8 @@ If you don't use Kiro, ignore this directory. The Claude Desktop flow documented
 ## What's in here
 
 - **`steering/bee-processing.md`** — The Kiro steering file that mirrors the Bee Processor system prompt. Auto-includes when Kiro sees files in `.kiro/bee-inbox/` (the sentinel folder).
-- **`hooks/bee-process-new-capture.kiro.hook`** — A `fileCreated` hook on `.kiro/bee-inbox/*.sentinel.md` that triggers auto-processing.
+- **`hooks/bee-sentinel-auto-process.kiro.hook`** — A `fileCreated` hook on `.kiro/bee-inbox/*.sentinel.md` that triggers best-effort auto-processing.
+- **`hooks/bee-process-inbox.kiro.hook`** — A `userTriggered` manual command ("process my Bee inbox") that drains all pending sentinels in one pass. Reliable fallback for when the auto-hook doesn't fire.
 - **`bee-inbox/`** — Where the sync scripts drop sentinel files. Empty by default (just a `.gitkeep`).
 
 ---
@@ -27,9 +28,10 @@ Bee wearable
    │
    ▼ writes sentinel → <workspace>/.kiro/bee-inbox/<id>.sentinel.md
    │
-   ▼ Kiro fileCreated hook fires
+   ▼ Kiro fileCreated hook fires (best-effort) — or you run "process my Bee inbox" manually
    │
-   ▼ Kiro reads sentinel → reads raw file from vault path → processes per steering → writes outputs to vault → deletes sentinel
+   ▼ per sentinel: idempotency guard (skip if already processed) → skip if capture still CAPTURING
+   │              → read raw file → process per steering → write outputs to vault → delete sentinel
    │
    ▼ 00 Inbox/Bee/*.md  +  05 Reference/[EMPLOYER]/Meeting Notes/*.md  +  People/<name>.md (created/updated)
 ```
@@ -83,9 +85,9 @@ If you only use one of them, you're still covered — pick whichever matches you
 ## Troubleshooting
 
 **Sentinel files pile up in `.kiro/bee-inbox/` and don't get processed:**
-- Is Kiro open? The hook only fires while Kiro is running.
-- Does your Kiro hook show as enabled? Check the `.kiro/hooks/bee-process-new-capture.kiro.hook` file has `"enabled": true`.
-- Manually ask Kiro to "process any sentinel files in `.kiro/bee-inbox/`" to catch up.
+- This is expected sometimes — the auto-hook is best-effort (Kiro hooks only fire while the workspace is open, and background writes don't always trigger them).
+- **Fix: run the manual command** — click the `bee-process-inbox` hook in Kiro, or say "process my Bee inbox." It drains all pending sentinels in one pass.
+- Check both hooks show enabled: `.kiro/hooks/bee-sentinel-auto-process.kiro.hook` and `.kiro/hooks/bee-process-inbox.kiro.hook` should each have `"enabled": true`.
 
 **First-run floods you with sentinels:**
 - The sync scripts seed their hash cache on first run with no sentinel output. If you saw a flood, you may have deleted `seen-hashes.json`. Run `bee sync` once manually, let it seed, then resume normal operation.

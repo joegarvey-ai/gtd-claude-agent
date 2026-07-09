@@ -12,6 +12,17 @@ The system is **human-in-the-loop by design.** Nothing sends, posts, or deletes 
 
 ---
 
+## Which contract governs
+
+Two copies of the GTD Assistant contract exist, and they can diverge. Precedence is:
+
+1. **`.kiro/steering/gtd-assistant.md`** (gitignored, personalized) — **authoritative when the client is Kiro.** Kiro auto-loads it, and it resolves to the real MCP stack (Obsidian + Outlook + Slack + enterprise tooling). This is what actually runs for the maintainer.
+2. **`system-prompt.md`** (tracked, generic `[BRACKETED]`) — authoritative for a **Claude Desktop** adopter who pastes it into a Project, and it is the **source template** the setup wizard personalizes. It is stack-agnostic on purpose.
+
+They are kept in sync by hand: a behavioral change (e.g. the Daily Triage workflow) should land in **both** — the tracked template and the steering (or the `.example` template it's generated from). If they conflict, the steering wins for Kiro sessions and the pasted prompt wins for Claude Desktop sessions. Never assume the tracked `system-prompt.md` is what's running — check which client you're in.
+
+---
+
 ## Agent roles
 
 This system has distinct agent roles. Each role has a defined scope, defined inputs/outputs, and hard boundaries on what it does NOT do.
@@ -222,21 +233,28 @@ Hooks provide event-driven automation. They fire on file events or user triggers
 
 | Hook | Trigger | What it does |
 |------|---------|-------------|
-| `bee-sentinel-auto-process` | `fileCreated` on `.kiro/bee-inbox/*.sentinel.md` | Processes new Bee captures: stage → redact → produce outputs → sync to vault → cleanup |
+| `bee-sentinel-auto-process` | `fileCreated` on `.kiro/bee-inbox/*.sentinel.md` | Best-effort auto-processing of new Bee sentinels: idempotency guard → skip partial captures → produce outputs → write to vault → delete sentinel. Kiro agent hooks only fire while the workspace is open and can miss background writes. |
+| `bee-process-inbox` (manual) | `userTriggered` | **Reliable fallback.** Processes ALL pending sentinels in one pass with the same close-the-loop logic. Use when sentinels pile up or the auto-hook didn't fire. |
 | `weekly-status-update` | `userTriggered` | Fetches tasks, drafts status updates, writes after approval |
-| `bee-process-new-capture` (basic) | `fileCreated` on `**/05 Reference/Bee/_raw/**` | Simpler hook for when vault is inside workspace |
+
+> The two Bee hooks share one procedure (idempotency guard, partial-capture skip, delete-after-write). The auto-hook is best-effort; the manual `bee-process-inbox` is the guaranteed path.
 
 ### Sentinel-based processing flow
 
 ```
-bee sync → raw capture to vault → sentinel to .kiro/bee-inbox/
-    → hook fires
-    → stage raw to _staging/ (workspace-local copy for reading)
-    → process (redaction, slug generation, output drafting)
-    → write outputs to _output/ (mirroring vault structure)
-    → run sync script (copy to vault, append People notes)
-    → delete sentinel, clean _staging/ and _output/
+bee sync (scheduled/watcher) → raw capture to vault → sentinel to .kiro/bee-inbox/
+    → bee-sentinel-auto-process fires (best-effort, Kiro open)
+      — OR — you run bee-process-inbox manually (reliable fallback)
+    → for each pending sentinel:
+        idempotency guard (skip if bee_conversation_id already in vault)
+        skip if raw capture state is still CAPTURING (partial)
+        process (redaction, slug generation, output drafting)
+        write the three outputs to the vault
+        delete the sentinel (only after outputs are written)
+    → summarize
 ```
+
+Note: when the vault lives outside the workspace and the agent can't write it directly via MCP, outputs are staged to `_output/` and the `apply-bee-outputs` script does the last-mile vault write. The close-the-loop guarantee is the same either way: a sentinel is deleted only after its outputs land.
 
 ---
 
@@ -254,11 +272,14 @@ personal-assistant-kit/
 │   ├── bee-inbox/                     ← Sentinel processing state (gitignored contents)
 │   │   └── .gitkeep
 │   ├── hooks/
-│   │   ├── bee-sentinel-auto-process.kiro.hook
-│   │   ├── bee-process-new-capture.kiro.hook
+│   │   ├── bee-sentinel-auto-process.kiro.hook  ← auto (best-effort)
+│   │   ├── bee-process-inbox.kiro.hook          ← manual (reliable fallback)
 │   │   └── weekly-status-update.kiro.hook
+│   ├── settings/
+│   │   └── mcp.example.json           ← MCP config template (Obsidian + Outlook + Slack)
 │   ├── steering/
-│   │   └── bee-processing.md          ← Bee processing rules (genericized)
+│   │   ├── bee-processing.md          ← Bee processing rules (genericized)
+│   │   └── gtd-assistant.example.md   ← GTD steering template (generated into gtd-assistant.md)
 │   └── specs/
 │       └── operational-framework-example/  ← Template for non-code Kiro specs
 ├── scripts/
@@ -290,7 +311,8 @@ personal-assistant-kit/
 
 - Keep `[BRACKETED]` placeholders for user-specific values
 - Don't add employer-specific, person-specific, or tool-specific content to tracked files
-- Test changes against the eval suite (Phase 2 — coming)
+- Land behavioral changes in BOTH the tracked `system-prompt.md` and the steering template (`.kiro/steering/gtd-assistant.example.md`) — see "Which contract governs"
+- Optionally check changes against the offline eval suite (`evals/`) — note it's not wired into CI yet
 - The system prompt is the behavioral contract; changes to it change agent behavior
 
 ### When adding new hooks
@@ -315,13 +337,34 @@ personal-assistant-kit/
 
 ---
 
-## What's next (roadmap)
+## Runtime vs. offline tooling
 
-| Phase | Status | What it delivers |
-|-------|--------|-----------------|
-| 1. CLAUDE.md + agent architecture | **Done** | This file — the system contract |
-| 2. Evals | **Done** | Functional tests: `evals/` — 28 cases across 4 suites (inbox, Bee, review, status) |
-| 3. Observability | **Done** | `observability/` — structured logs, traces, cost metering, drift detection. Auto-integrated with eval runner. |
-| 4. Execution hooks | **Done** | `validators/` — schema, redaction, routing, idempotency, and continuation state management |
-| 5. Subagent routing | Skipped | Not needed at current scale — revisit when evals show cost/latency bottlenecks |
-| 6. Bundled infrastructure | **Done** | `.devcontainer/`, `sandbox/`, `scripts/setup.mjs` — zero-config dev environment, test vault, interactive setup wizard |
+Be precise about what actually runs *inside the agent* versus what is *offline developer tooling* you run yourself from a terminal. The agent is prompt-driven over MCP — it cannot `import` TypeScript modules mid-session, so the TS subsystems below do **not** execute during a live agent turn and do **not** enforce or observe anything the agent does in real time.
+
+| Component | What it is | Runs inside the agent? |
+|-----------|-----------|------------------------|
+| `system-prompt.md`, `.kiro/steering/*.md` | The behavioral contract the model reads | **Yes** — this is the live runtime |
+| `.kiro/hooks/*.kiro.hook` | Kiro-triggered agent prompts (file events / manual) | **Yes** — when Kiro is the client and the workspace is open |
+| Bee sync `scripts/*.ps1` | Windows Task Scheduler / login automation | **Yes** — but as OS processes, not inside the agent |
+| `validators/` | TS CLI: schema / redaction / routing / idempotency checks | **No** — offline CLI you run against the vault; nothing calls it at agent runtime |
+| `observability/` | TS logging / tracing / metering / drift | **No** — only the offline eval runner imports it; it does not observe live agent turns |
+| `evals/` | TS harness calling the Claude API with fixtures | **No** — offline test suite you run from a terminal |
+
+The TS subsystems are useful **offline** (run them in CI or by hand to check the vault and prompts). They are not runtime middleware, and nothing in the agent loop invokes them. Don't describe them as if they gate or instrument live behavior.
+
+---
+
+## What's built
+
+| Area | Status | What it is | Where it runs |
+|------|--------|-----------|---------------|
+| CLAUDE.md + agent architecture | Built | This file — the system contract | Runtime (read by the agent) |
+| Daily Triage + GTD workflows | Built | `system-prompt.md` + `.kiro/steering/gtd-assistant.md` | Runtime |
+| Bee pipeline | Built | sync scripts + processing steering + hooks (auto + manual) | OS automation + runtime |
+| Evals | Built (offline) | `evals/` — ~28 cases across 4 suites (inbox, Bee, review, status) | Offline CLI, no CI yet |
+| Observability | Built (offline) | `observability/` — logs, traces, metering, drift | Offline; imported only by the eval runner |
+| Validators | Built (offline) | `validators/` — schema, redaction, routing, idempotency, continuation | Offline CLI; **not** invoked at agent runtime |
+| Bundled infrastructure | Built | `.devcontainer/`, `sandbox/`, `scripts/setup.mjs` | Dev-time |
+| Subagent routing | Not built | Deferred — revisit if evals show cost/latency bottlenecks | — |
+
+> Honesty note: the offline subsystems were previously labeled "Done / Auto-integrated," implying they enforce invariants and observe cost/quality on the live agent. They do not — see "Runtime vs. offline tooling" above. Making them real gates (CI running evals against the shipped prompts; validators as a pre-commit/scheduled vault check) is tracked separately.

@@ -1,6 +1,8 @@
 # Evals
 
-Functional tests that verify the Personal Assistant Kit's system prompts produce correct behavior. These run against the Claude API with synthetic fixtures — no live MCP connections or real vault needed.
+> **Offline test harness — you run it, nothing runs it for you.** These call the Claude API with synthetic fixtures (no live MCP, no real vault) and are **not** wired into CI, so they don't gate commits or the shipped prompts today. Two caveats worth knowing: (1) some suites test prompt text inline rather than importing the exact shipped `system-prompt.md`/steering, and (2) the suites check the model's prose *about* an action — they don't exercise real tool use or the propose/confirm/write loop. Making these a real gate (CI against the shipped artifacts; a tool-use case) is planned — see CLAUDE.md, "Runtime vs. offline tooling."
+
+Functional tests that check the Personal Assistant Kit's system prompts produce correct behavior against synthetic fixtures.
 
 ## Setup
 

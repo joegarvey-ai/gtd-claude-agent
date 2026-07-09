@@ -1,6 +1,8 @@
 # Validators
 
-Deterministic execution hooks that enforce system invariants regardless of which model or agent is running. These run as pre/post checks around agent actions to catch issues before they reach the vault.
+> **Offline developer tooling — not runtime middleware.** These are TypeScript CLIs you run yourself (in CI or from a terminal) against the vault. The prompt-driven agent cannot `import` them mid-session, so they do **not** run during a live agent turn and do **not** gate agent actions in real time. Nothing in the agent loop invokes them. Use them as an offline safety net that checks the vault *after* the agent has written to it.
+
+Deterministic checks for system invariants: schema, redaction leakage, GTD routing, idempotency, and continuation state. Run them by hand or on a schedule to catch issues the agent's prompt-level rules may have missed.
 
 ## Setup
 
@@ -70,7 +72,7 @@ Verifies:
 **Trigger:** Pre-process (before Bee Processor starts)
 
 Prevents re-processing captures that have already been processed:
-- Collects all `bee_conversation_id` values from existing outputs
+- Collects conversation IDs from existing outputs — matches both `bee_conversation_id` (output files) and `conversation_id` (sentinels)
 - Checks pending sentinel files against already-processed IDs
 - Flags duplicate task files for the same conversation
 
@@ -98,26 +100,15 @@ markCompleted(workspacePath, state.sessionId);
 
 If a run is interrupted (context limit, crash, timeout), the next run can detect the incomplete state and resume from the last checkpoint rather than re-processing everything.
 
-## Integration with Kiro Hooks
+## Where these fit (and where they don't)
 
-The validators can be called from Kiro hooks at appropriate trigger points:
+The "Trigger" labels above (Pre-process, Post-write, Post-process) describe the *logical* point each check corresponds to — **not** an automatic hook that fires there. Today nothing invokes these at agent runtime; you run them yourself.
 
-**Pre-process (before Bee processing starts):**
-```
-Check idempotency → skip already-processed sentinels
-Check continuation → resume interrupted sessions instead of re-processing
-```
+Recommended ways to actually use them:
+- **In CI** — run `npx tsx src/cli.ts all <vault> <workspace>` on a schedule or pre-commit to check the vault state.
+- **By hand** — after a batch of Bee processing, run `validate:idempotency` and `validate:redaction` to confirm no duplicates or leaks landed.
 
-**Post-write (after outputs are generated):**
-```
-Validate schema → ensure frontmatter and sections are correct
-Validate redaction → catch any sensitive content that leaked through
-```
-
-**Post-process (after inbox routing):**
-```
-Validate routing → ensure no orphaned or duplicated files
-```
+Wiring these into a real gate (CI against the shipped prompts; a scheduled vault check) is planned but not yet done — see CLAUDE.md, "Runtime vs. offline tooling."
 
 ## Programmatic API
 
