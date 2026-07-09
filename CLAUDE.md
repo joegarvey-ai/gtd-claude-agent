@@ -158,14 +158,21 @@ These rules apply to ALL agents in ALL contexts. No exceptions.
 
 ### Human-in-the-loop
 
-| Action type | Trust level | Behavior |
-|-------------|-------------|----------|
-| Read (vault, email, calendar, Slack) | Auto-approved | Agent reads freely to gather context |
-| Write to vault (new files) | Propose first | Show file path + preview, wait for confirmation. Exception: Bee auto-process mode writes directly. |
-| Write to vault (modify existing) | Propose first | Show the change, wait for confirmation |
-| Send (email, Slack message, calendar invite) | Always confirm | Show full draft, recipient, and context. Never auto-send. |
-| Delete (files, events, messages) | Always confirm | Explain what will be deleted and why. |
-| Status update writes | Batch approval | Draft all updates, present as a batch, write only after explicit approval per-task or "approve all" |
+Two layers work together, and it's important not to conflate them:
+
+- **The proposal gate (agent behavior):** before writing/sending, the agent shows you the content in chat and waits for your explicit "yes." This is the real human-in-the-loop control and it lives in the prompt/steering.
+- **The tool-permission layer (MCP `autoApprove`):** whether Kiro pops its own "allow this tool call?" dialog. Auto-approving a *write* tool here does NOT bypass the proposal gate — it just avoids a redundant second dialog after you've already confirmed in chat.
+
+| Action type | Proposal gate (agent) | `autoApprove` (Kiro dialog) | Behavior |
+|-------------|----------------------|------------------------------|----------|
+| Read (vault, email, calendar, Slack) | None needed | Auto-approved | Agent reads freely to gather context |
+| Write to vault (new file) | **Propose first** — show path + preview, wait for "yes" | Auto-approved (avoids redundant 2nd dialog) | Content is gated in chat; the tool call itself doesn't re-prompt. Exception: Bee auto-process writes a batch directly (no per-file proposal). |
+| Write to vault (modify existing) | **Propose first** — show the change, wait | Not auto-approved | Both layers apply |
+| Send (email, Slack message, calendar invite) | **Always confirm** — full draft + recipient | Not auto-approved | Never auto-send. Slack is draft-only (ENFORCE_DRAFTS). |
+| Delete (files, events, messages) | **Always confirm** — explain what + why | Not auto-approved | Both layers apply |
+| Status update writes | **Batch approval** — draft all, approve per-task or "approve all" | Not auto-approved | Both layers apply |
+
+Why `create-note`/`create-directory` are auto-approved even though vault writes are "propose first": the agent has already proposed the content and gotten your "yes" in chat, so a second Kiro permission dialog would be pure friction. The proposal gate — not the Kiro dialog — is what protects you. (Bee auto-process is the one flow that writes without a per-file proposal, by design, so it can drain a backlog unattended.)
 
 ### Redaction policy (Bee Processor)
 
@@ -213,17 +220,20 @@ When in doubt, exclude. Do not paraphrase redacted content — omit entirely. If
 
 ### Trust model
 
-| Operation | Auto-approve | Require confirmation |
-|-----------|-------------|---------------------|
-| List/search vault | Yes | — |
-| Read vault file | Yes | — |
-| Create vault note | Yes (Bee auto-process) | Yes (GTD processing) |
-| Read email/inbox | Yes | — |
-| Send email | — | Always |
-| Read Slack | — | Confirm which channel |
-| Post Slack | — | Always (draft mode) |
-| Read tasks | Yes | — |
-| Update task status | — | After batch approval |
+"Kiro `autoApprove`" = whether Kiro shows its permission dialog. "Proposal gate" = whether the agent shows content in chat and waits for your "yes" (see Human-in-the-loop above). A write can be auto-approved at the Kiro layer while still being gated by the proposal — the two are independent.
+
+| Operation | Kiro `autoApprove` | Proposal gate (agent) |
+|-----------|--------------------|-----------------------|
+| List/search vault | Yes | None needed |
+| Read vault file | Yes | None needed |
+| Create vault note/dir | Yes | Propose first (except Bee auto-process, which writes a batch directly) |
+| Read email/inbox | Yes | None needed |
+| Read calendar | Yes | None needed |
+| Send email / book room | No | Always confirm |
+| Read Slack (unread, DMs, messages) | Yes | None needed |
+| Post/reply Slack | No | Always — draft-only (ENFORCE_DRAFTS) |
+| Read tasks | Yes | None needed |
+| Update task status | No | After batch approval |
 
 ---
 

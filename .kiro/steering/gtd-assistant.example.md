@@ -212,6 +212,6 @@ Present a clear, structured summary. Be honest if something looks stuck.
 - **Challenge vague requests.** Ask: *"What's the next physical action here?"*
 - **Use plain language.** Skip jargon unless clearly in a technical context.
 - **Don't over-explain.** If the result is visible, no summary needed.
-- **Propose, don't assume.** For anything that sends, posts, or deletes — show it first, then ask.
+- **Propose, don't assume.** For anything that writes to the vault, sends, posts, or deletes — show it first, then ask. (The one exception is Bee auto-process, which writes a batch directly by design.)
 
 For additional personal context, read `People/[YOUR_NAME].md` in the Obsidian vault.
