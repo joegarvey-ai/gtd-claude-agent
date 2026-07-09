@@ -3,7 +3,12 @@ import { resolve, join } from "path";
 import { ValidationResult, ValidationError, ValidationWarning } from "./types.js";
 
 function extractConversationId(content: string): string | null {
-  const match = content.match(/bee_conversation_id:\s*(.+)/);
+  // Processed output files use `bee_conversation_id`; sync-written sentinels use
+  // `conversation_id` (no prefix). Accept either so the sentinel duplicate-check
+  // actually matches processed outputs. Anchor to a line start (with optional
+  // frontmatter indentation) so `bee_conversation_id` isn't matched by the bare
+  // `conversation_id` branch, and so unrelated keys ending in the substring don't hit.
+  const match = content.match(/^\s*(?:bee_)?conversation_id:\s*(.+)$/m);
   if (!match) return null;
   return match[1].trim();
 }

@@ -18,14 +18,29 @@ $ErrorActionPreference = 'Continue'
 
 # Load vault path and sentinel dir from config
 $ConfigFile = Join-Path $env:LOCALAPPDATA 'bee-sync\config.ps1'
+$ConfigBak  = "$ConfigFile.bak"
 if (-not (Test-Path $ConfigFile)) {
     $LogDir = Join-Path $env:LOCALAPPDATA 'bee-sync'
     if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDir | Out-Null }
-    Add-Content -Path (Join-Path $LogDir 'bee-sync.log') `
-        -Value ("[{0}] FATAL config missing at {1}. Run install-bee-sync-task.ps1 to generate it." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $ConfigFile)
-    exit 1
+    $LogPath = Join-Path $LogDir 'bee-sync.log'
+    # Self-heal: config.ps1 can go missing (manual cleanup, interrupted reinstall,
+    # cloud-sync hiccup). If a known-good backup exists, restore it and keep running
+    # instead of dying silently until someone notices and re-runs the installer.
+    if (Test-Path $ConfigBak) {
+        Copy-Item -Path $ConfigBak -Destination $ConfigFile -Force
+        Add-Content -Path $LogPath `
+            -Value ("[{0}] RECOVERED config was missing; restored from {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $ConfigBak)
+    } else {
+        Add-Content -Path $LogPath `
+            -Value ("[{0}] FATAL config missing at {1} and no backup at {2}. Run install-bee-sync-task.ps1 to generate it." -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $ConfigFile, $ConfigBak)
+        exit 1
+    }
 }
 . $ConfigFile    # defines $VaultRaw; optionally $SentinelDir
+
+# Refresh the backup whenever we have a valid config, so the next disappearance
+# can self-heal to the current paths.
+try { Copy-Item -Path $ConfigFile -Destination $ConfigBak -Force -ErrorAction SilentlyContinue } catch {}
 
 # Default SentinelDir if not set in config. When running inside a Kiro workspace,
 # the Kiro hook expects sentinels under <workspace>/.kiro/bee-inbox/. Default here
