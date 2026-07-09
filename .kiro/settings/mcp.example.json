@@ -36,7 +36,10 @@
       "autoApprove": [
         "email_inbox",
         "email_read",
-        "email_search"
+        "email_search",
+        "calendar_view",
+        "calendar_search",
+        "calendar_availability"
       ]
     },
     "slack-mcp": {
@@ -60,7 +63,10 @@
         "health_check",
         "get_diagnostics",
         "open_dm_channel",
-        "get_messages"
+        "get_messages",
+        "get_unread_counts",
+        "get_unreads",
+        "list_dms"
       ]
     },
     "enterprise-tooling-mcp": {
