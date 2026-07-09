@@ -1,0 +1,79 @@
+{
+  "_comment": "Kiro MCP config template — Outlook + Slack + Obsidian (+ optional enterprise tooling). Copy to mcp.json (gitignored) and replace every [BRACKETED] placeholder. See docs/enterprise-mcp-patterns.md for the full walkthrough. JSON has no comments, so guidance lives in the _comment fields and the docs.",
+  "mcpServers": {
+    "obsidian": {
+      "_comment": "Local Obsidian vault over the filesystem MCP. On Windows, npx.cmd needs an explicit PATH so it resolves; on Mac/Linux use \"npx\" and drop the env block.",
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "obsidian-mcp",
+        "[VAULT_PATH]"
+      ],
+      "env": {
+        "PATH": "C:\\Program Files\\nodejs;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0;C:\\WINDOWS\\System32;%PATH%"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "list-available-vaults",
+        "search-vault",
+        "create-directory",
+        "create-note"
+      ]
+    },
+    "aws-outlook-mcp": {
+      "_comment": "Corporate Outlook email + calendar. OUTLOOK_MCP_ENABLE_WRITES=true allows sending/booking (still gated by propose-before-send in the steering). First use triggers a browser OAuth flow. Replace the command/args with however your Outlook MCP binary launches. This example shells into a Linux distro via WSL; a Mac/Linux host would invoke the binary directly.",
+      "command": "wsl",
+      "args": [
+        "-d",
+        "[WSL_DISTRO]",
+        "--",
+        "[OUTLOOK_MCP_BINARY_PATH]"
+      ],
+      "env": {
+        "OUTLOOK_MCP_ENABLE_WRITES": "true"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "email_inbox",
+        "email_read",
+        "email_search"
+      ]
+    },
+    "slack-mcp": {
+      "_comment": "Team Slack. ENFORCE_DRAFTS=true means any reply is saved to your Slack compose box for manual review — never auto-posted. Replace [SLACK_MCP_BINARY_PATH] with your Slack MCP binary. The chmod 600 prefix is an enterprise-specific auth-cookie permission fix — drop it if your Slack MCP authenticates differently.",
+      "command": "wsl",
+      "args": [
+        "-d",
+        "[WSL_DISTRO]",
+        "--",
+        "bash",
+        "-c",
+        "chmod 600 [AUTH_COOKIE_PATH] 2>/dev/null; exec [SLACK_MCP_BINARY_PATH]"
+      ],
+      "env": {
+        "ENFORCE_DRAFTS": "true"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "lookup_user",
+        "search",
+        "health_check",
+        "get_diagnostics",
+        "open_dm_channel",
+        "get_messages"
+      ]
+    },
+    "enterprise-tooling-mcp": {
+      "_comment": "OPTIONAL: your company's internal-tooling MCP (wikis, ticketing, code search, docs). Delete this whole block if you don't have one. Example shown for an Amazon 'builder-mcp'; substitute your own. Only read-only tools are auto-approved.",
+      "command": "wsl",
+      "args": [
+        "-d",
+        "[WSL_DISTRO]",
+        "--",
+        "[ENTERPRISE_MCP_BINARY_PATH]"
+      ],
+      "disabled": true,
+      "autoApprove": []
+    }
+  }
+}

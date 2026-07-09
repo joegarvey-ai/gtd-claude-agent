@@ -15,6 +15,25 @@ import { homedir, platform } from "os";
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q) => new Promise((r) => rl.question(q, r));
 
+/**
+ * Write a file that a runtime reads directly (Kiro mcp.json / steering), without ever
+ * clobbering an existing hand-tuned one. If the target already exists, write to a
+ * "<name>.generated.<ext>" sibling (gitignored) and tell the user to review + rename.
+ * Returns the path actually written.
+ */
+function writeGuarded(targetPath, content, label) {
+  if (existsSync(targetPath)) {
+    const gen = targetPath.replace(/(\.[^.]+)$/, ".generated$1");
+    writeFileSync(gen, content);
+    console.log(`⚠ ${label} already exists — wrote to ${gen.replace(ROOT + "/", "").replace(ROOT + "\\", "")} instead.`);
+    console.log(`  Review it, then rename over your existing file to activate.`);
+    return gen;
+  }
+  writeFileSync(targetPath, content);
+  console.log(`✓ ${label} → ${targetPath.replace(ROOT + "/", "").replace(ROOT + "\\", "")}`);
+  return targetPath;
+}
+
 const ROOT = resolve(new URL(".", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"), "..");
 const isMac = platform() === "darwin";
 const isWindows = platform() === "win32";
@@ -51,11 +70,30 @@ console.log("  2. Kiro");
 console.log("  3. Both");
 const clientChoice = await ask("Choice (1/2/3): ");
 
+console.log("");
+console.log("Which connectivity profile?");
+console.log("  1. Obsidian only (start here — add email/calendar later)");
+console.log("  2. Outlook + Slack (enterprise: corporate email/calendar + team chat)");
+const profileChoice = await ask("Choice (1/2): ");
+const isEnterprise = profileChoice.trim() === "2";
+
 let employer = "";
 console.log("");
 const hasEmployer = await ask("Do you want a separate work meeting notes folder? (y/n): ");
 if (hasEmployer.toLowerCase() === "y") {
   employer = await ask("Employer/org name (used in folder path): ");
+}
+
+// Enterprise MCP launch details (only asked for the Outlook + Slack profile).
+let ent = {};
+if (isEnterprise) {
+  console.log("");
+  console.log("Outlook + Slack profile — a few launch details (leave blank to keep the [PLACEHOLDER]).");
+  console.log("The generated .kiro/settings/mcp.json is gitignored and never committed.");
+  ent.wslDistro = await ask("  WSL distro name (blank if running MCPs natively, not via WSL): ");
+  ent.outlookBin = await ask("  Outlook MCP binary path: ");
+  ent.slackBin = await ask("  Slack MCP binary path: ");
+  ent.cookiePath = await ask("  Auth cookie path for chmod-600 fix (blank if not needed): ");
 }
 
 console.log("");
@@ -71,6 +109,14 @@ console.log("");
 let systemPrompt = readFileSync(resolve(ROOT, "system-prompt.md"), "utf-8");
 systemPrompt = systemPrompt.replace(/\[YOUR_NAME\]/g, name);
 systemPrompt = systemPrompt.replace(/\[VAULT_PATH\]/g, vaultPath);
+// [EMPLOYER] appears in the meeting-notes folder paths. If the user opted out of a
+// work folder, fold "05 Reference/[EMPLOYER]/Meeting Notes/" back to the personal path.
+if (employer) {
+  systemPrompt = systemPrompt.replace(/\[EMPLOYER\]/g, employer);
+} else {
+  systemPrompt = systemPrompt.replace(/05 Reference\/\[EMPLOYER\]\/Meeting Notes\//g, "05 Reference/Meeting Notes/");
+  systemPrompt = systemPrompt.replace(/\[EMPLOYER\]/g, "your employer");
+}
 
 const systemPromptPath = resolve(ROOT, "system-prompt.generated.md");
 writeFileSync(systemPromptPath, systemPrompt);
@@ -136,34 +182,86 @@ if (clientChoice === "2" || clientChoice === "3") {
   const kiroDir = resolve(ROOT, ".kiro/settings");
   if (!existsSync(kiroDir)) mkdirSync(kiroDir, { recursive: true });
 
-  const kiroConfig = {
-    mcpServers: {
-      obsidian: {
-        command: isWindows ? "C:\\Program Files\\nodejs\\npx.cmd" : "npx",
-        args: ["-y", "obsidian-mcp", vaultPath],
-        ...(isWindows && {
-          env: {
-            PATH: "C:\\Program Files\\nodejs;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0;C:\\WINDOWS\\System32;%PATH%",
-          },
-        }),
-        disabled: false,
-        autoApprove: ["list-available-vaults", "search-vault", "create-directory", "create-note"],
+  const obsidianServer = {
+    command: isWindows ? "C:\\Program Files\\nodejs\\npx.cmd" : "npx",
+    args: ["-y", "obsidian-mcp", vaultPath],
+    ...(isWindows && {
+      env: {
+        PATH: "C:\\Program Files\\nodejs;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0;C:\\WINDOWS\\System32;%PATH%",
       },
-    },
+    }),
+    disabled: false,
+    autoApprove: ["list-available-vaults", "search-vault", "create-directory", "create-note"],
   };
 
+  const kiroConfig = { mcpServers: { obsidian: obsidianServer } };
+
+  if (isEnterprise) {
+    // Build the launch invocation: via WSL if a distro was given, else run the binary directly.
+    const launch = (bin) =>
+      ent.wslDistro
+        ? { command: "wsl", args: ["-d", ent.wslDistro, "--", bin || "[MCP_BINARY_PATH]"] }
+        : { command: bin || "[MCP_BINARY_PATH]", args: [] };
+
+    kiroConfig.mcpServers["aws-outlook-mcp"] = {
+      ...launch(ent.outlookBin),
+      env: { OUTLOOK_MCP_ENABLE_WRITES: "true" },
+      disabled: false,
+      autoApprove: ["email_inbox", "email_read", "email_search"],
+    };
+
+    // Slack needs an optional chmod-600 cookie fix, so it uses a bash -c wrapper when via WSL.
+    const slackBin = ent.slackBin || "[SLACK_MCP_BINARY_PATH]";
+    const cookieFix = ent.cookiePath ? `chmod 600 ${ent.cookiePath} 2>/dev/null; ` : "";
+    kiroConfig.mcpServers["slack-mcp"] = ent.wslDistro
+      ? {
+          command: "wsl",
+          args: ["-d", ent.wslDistro, "--", "bash", "-c", `${cookieFix}exec ${slackBin}`],
+          env: { ENFORCE_DRAFTS: "true" },
+          disabled: false,
+          autoApprove: ["lookup_user", "search", "health_check", "get_diagnostics", "open_dm_channel", "get_messages"],
+        }
+      : {
+          command: slackBin,
+          args: [],
+          env: { ENFORCE_DRAFTS: "true" },
+          disabled: false,
+          autoApprove: ["lookup_user", "search", "health_check", "get_diagnostics", "open_dm_channel", "get_messages"],
+        };
+  }
+
   const kiroConfigPath = resolve(kiroDir, "mcp.json");
-  writeFileSync(kiroConfigPath, JSON.stringify(kiroConfig, null, 2));
-  console.log(`✓ Kiro MCP config → .kiro/settings/mcp.json`);
+  writeGuarded(
+    kiroConfigPath,
+    JSON.stringify(kiroConfig, null, 2),
+    `Kiro MCP config${isEnterprise ? " (Obsidian + Outlook + Slack)" : " (Obsidian only)"}`
+  );
 }
 
 // --- Generate Kiro steering (gtd-assistant) ---
 
-if (clientChoice === "2" || clientChoice === "3") {
+if ((clientChoice === "2" || clientChoice === "3") && isEnterprise) {
+  // Enterprise profile: generate the full steering (Daily Triage + Outlook/Slack contracts)
+  // from the tracked template, substituting name / vault / employer.
   const steeringDir = resolve(ROOT, ".kiro/steering");
   if (!existsSync(steeringDir)) mkdirSync(steeringDir, { recursive: true });
 
-  const emailType = employer ? "corporate email (Outlook/Gmail)" : "Gmail";
+  let steeringTpl = readFileSync(resolve(ROOT, ".kiro/steering/gtd-assistant.example.md"), "utf-8");
+  steeringTpl = steeringTpl.replace(/\[YOUR_NAME\]/g, name);
+  steeringTpl = steeringTpl.replace(/\[VAULT_PATH\]/g, vaultPath);
+  if (employer) {
+    steeringTpl = steeringTpl.replace(/\[EMPLOYER\]/g, employer);
+  } else {
+    steeringTpl = steeringTpl.replace(/05 Reference\/\[EMPLOYER\]\/Meeting Notes\//g, "05 Reference/Meeting Notes/");
+    steeringTpl = steeringTpl.replace(/\[EMPLOYER\]/g, "your employer");
+  }
+
+  const steeringPath = resolve(steeringDir, "gtd-assistant.md");
+  writeGuarded(steeringPath, steeringTpl, "Kiro GTD steering (Outlook + Slack + Daily Triage)");
+} else if (clientChoice === "2" || clientChoice === "3") {
+  const steeringDir = resolve(ROOT, ".kiro/steering");
+  if (!existsSync(steeringDir)) mkdirSync(steeringDir, { recursive: true });
+
   const meetingNotesPath = employer
     ? `05 Reference/${employer}/Meeting Notes/`
     : "05 Reference/Meeting Notes/";
@@ -218,8 +316,7 @@ The vault is organized into these folders:
 `;
 
   const steeringPath = resolve(steeringDir, "gtd-assistant.md");
-  writeFileSync(steeringPath, steering);
-  console.log(`✓ Kiro GTD steering → .kiro/steering/gtd-assistant.md`);
+  writeGuarded(steeringPath, steering, "Kiro GTD steering (Obsidian only)");
 }
 
 // --- Generate vault folders (if they don't exist) ---
