@@ -18,7 +18,7 @@ Bee wearable
    │
    ▼  (Claude Desktop "Bee Processor" project OR Kiro)
 <vault>/00 Inbox/Bee/                      ← stack-ranked tasks per meeting
-<vault>/05 Reference/Amazon/Meeting Notes/ ← cleaned work meeting summaries (common case)
+<vault>/05 Reference/<Employer>/Meeting Notes/ ← cleaned work meeting summaries (common case)
 <vault>/05 Reference/Meeting Notes/        ← cleaned personal meeting summaries
 <vault>/People/<name>.md                   ← structured, evolving bios
 ```
@@ -61,11 +61,11 @@ In Obsidian (or your file explorer), create these folders inside your vault:
   Bee/
     _raw/                       ← where sync output lands
   Meeting Notes/                ← cleaned *personal* meeting summaries land here
-  Amazon/                       ← (or your employer's name)
+  <Employer>/                   ← your employer's name, e.g. Acme
     Meeting Notes/              ← cleaned *work* meeting summaries land here
 ```
 
-Most captures will be work-related. If you're not using this for work, you can skip the `Amazon/Meeting Notes/` folder — the processor uses judgment and will fall back to the personal Meeting Notes folder.
+Most captures will be work-related. If you're not using this for work, you can skip the `<Employer>/Meeting Notes/` folder — the processor uses judgment and will fall back to the personal Meeting Notes folder.
 
 The `People/` folder should already exist from the main setup.
 

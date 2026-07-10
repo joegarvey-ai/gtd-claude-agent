@@ -137,8 +137,19 @@ export function validateSchema(outputDir: string): ValidationResult {
   const beeInbox = resolve(outputDir, "00 Inbox/Bee");
   scanDir(beeInbox, validateBeeTaskFile);
 
-  // Check meeting notes (look for both patterns)
-  for (const meetingDir of ["05 Reference/Meeting Notes", "05 Reference/Amazon/Meeting Notes"]) {
+  // Check meeting notes: the personal folder plus any employer-specific folder.
+  // Discover employer folders dynamically (05 Reference/<employer>/Meeting Notes)
+  // instead of hardcoding one employer — the kit is employer-neutral.
+  const meetingDirs = ["05 Reference/Meeting Notes"];
+  const refDir = resolve(outputDir, "05 Reference");
+  if (existsSync(refDir)) {
+    for (const entry of readdirSync(refDir, { withFileTypes: true })) {
+      if (entry.isDirectory() && entry.name !== "Bee" && entry.name !== "Meeting Notes") {
+        meetingDirs.push(`05 Reference/${entry.name}/Meeting Notes`);
+      }
+    }
+  }
+  for (const meetingDir of meetingDirs) {
     const fullDir = resolve(outputDir, meetingDir);
     scanDir(fullDir, validateMeetingNoteFile);
   }
