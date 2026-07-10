@@ -17,7 +17,7 @@
 #
 # USAGE:
 #   1. Replace [VAULT_PATH] with your Obsidian vault path
-#   2. Replace [WORKSPACE_PATH] with your gtd-claude-agent workspace path
+#   2. Replace [WORKSPACE_PATH] with your personal-assistant-kit workspace path
 #   3. Run manually or let the Kiro hook invoke it after processing
 #
 # ============================================================
@@ -29,7 +29,7 @@ $vault = "[VAULT_PATH]"
 # Example: "C:\Users\you\iCloudDrive\iCloud~md~obsidian"
 
 $workspace = "[WORKSPACE_PATH]"
-# Example: "C:\Users\you\Desktop\gtd-claude-agent-main"
+# Example: "C:\Users\you\Desktop\personal-assistant-kit-main"
 
 $outputDir = "$workspace\.kiro\bee-inbox\_output"
 $stagingDir = "$workspace\.kiro\bee-inbox\_staging"

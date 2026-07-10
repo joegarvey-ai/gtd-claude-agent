@@ -154,4 +154,4 @@ Claude should be able to describe your setup, your tools, and your preferences b
 
 ## Sharing your customizations
 
-If you've built something useful on top of this template, consider opening an issue or pull request on the [GitHub repo](https://github.com/joegarvey-ai/gtd-claude-agent). The goal is to make this a living resource that gets better as more people use it.
+If you've built something useful on top of this template, consider opening an issue or pull request on the [GitHub repo](https://github.com/joegarvey-ai/personal-assistant-kit). The goal is to make this a living resource that gets better as more people use it.

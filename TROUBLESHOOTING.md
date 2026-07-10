@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Common issues and how to fix them. If your problem isn't listed here, [open an issue](https://github.com/joegarvey-ai/gtd-claude-agent/issues) on GitHub and we'll help.
+Common issues and how to fix them. If your problem isn't listed here, [open an issue](https://github.com/joegarvey-ai/personal-assistant-kit/issues) on GitHub and we'll help.
 
 ---
 
@@ -188,7 +188,7 @@ This means the system prompt (the instructions that tell Claude about your setup
 
 ## Still stuck?
 
-[Open an issue](https://github.com/joegarvey-ai/gtd-claude-agent/issues) on GitHub and describe:
+[Open an issue](https://github.com/joegarvey-ai/personal-assistant-kit/issues) on GitHub and describe:
 - What step you're on
 - What you expected to happen
 - What actually happened

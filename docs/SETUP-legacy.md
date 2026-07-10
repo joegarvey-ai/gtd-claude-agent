@@ -203,4 +203,4 @@ If any of these fail, check that:
 
 Your GTD Claude Agent is now set up. Start by dumping a few tasks into your Obsidian inbox, then ask Claude to process them. The more you use it, the more natural the workflow becomes.
 
-For ongoing tips and community support, check the [Issues](https://github.com/joegarvey-ai/gtd-claude-agent/issues) tab on this repo.
+For ongoing tips and community support, check the [Issues](https://github.com/joegarvey-ai/personal-assistant-kit/issues) tab on this repo.

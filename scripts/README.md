@@ -42,7 +42,7 @@ If you're not using Kiro, sentinels still get written (they're harmless) but not
 
 ## Setup
 
-From a PowerShell prompt in this folder (inside the gtd-claude-agent workspace):
+From a PowerShell prompt in this folder (inside the personal-assistant-kit workspace):
 
 ```powershell
 # Layer 1. First run prompts for your vault path and auto-detects the Kiro sentinel folder.

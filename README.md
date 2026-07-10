@@ -104,7 +104,7 @@ The assistant handles steps 2-4 for you. You capture (step 1) and decide what to
 00 Inbox/                  ← Everything enters here
 01 Next Actions/           ← Things to do (Deep Work / Quick Wins)
 02 Personal Projects/      ← Multi-step efforts with a defined outcome
-03 Family & Personal/      ← Household logistics, family coordination
+03 Family & Personal Planning/  ← Household logistics, family coordination
 04 Someday Maybe/          ← Not now, but not forgotten
 05 Reference/              ← Keep but don't act on
 06 Waiting For/            ← Blocked on someone else

@@ -130,20 +130,31 @@ GitHub uses Claude's built-in Connectors — no settings file editing needed.
 
 ---
 
-## Outlook (email)
+## Outlook (email + calendar)
 
-> **Difficulty:** Varies — requires an Outlook MCP server, which is typically a third-party package; may not be available at all enterprises
-> **What it gives you:** Claude can read and draft Outlook email (Microsoft 365 / Exchange) — the equivalent of the Gmail connector for corporate environments
+> **Difficulty:** Moderate — requires an Outlook MCP server, but it works and is a first-class supported path
+> **What it gives you:** Claude can read/draft corporate email and read your calendar (Microsoft 365 / Exchange) — the Outlook equivalent of the Gmail connector
 
-Unlike Gmail (which is a built-in Claude Desktop connector — zero config), Outlook requires:
+Outlook is a **supported profile**, not a workaround. If you run Kiro (or another MCP client) with an Outlook MCP server, the kit's Daily Triage, inbox, and calendar flows all target Outlook directly. The setup wizard offers an "Outlook + Slack" profile that generates the config for you (`node scripts/setup.mjs`), and `.kiro/settings/mcp.example.json` is a ready-to-copy template.
 
-1. An Outlook/Microsoft-Graph MCP server package installed via `npx` or similar
-2. OAuth credentials from your Microsoft 365 tenant (typically requires admin approval at your company)
-3. Adding the server to your `claude_desktop_config.json`
+**What you need:**
 
-**Reality check:** If your company tightly controls Microsoft Graph app registrations, you may not be able to set this up without IT involvement. Gmail works out-of-the-box for personal accounts; Outlook at a Fortune-500 employer typically does not.
+1. An Outlook MCP server binary (e.g. an internal `aws-outlook-mcp`-style package, or a Microsoft-Graph MCP server from the community registry).
+2. Its launch command in your MCP config, with writes enabled if you want drafting/booking:
+   ```json
+   "aws-outlook-mcp": {
+     "command": "<how your Outlook MCP launches>",
+     "env": { "OUTLOOK_MCP_ENABLE_WRITES": "true" },
+     "autoApprove": ["email_inbox", "email_read", "email_search",
+                     "calendar_view", "calendar_search", "calendar_availability"]
+   }
+   ```
+   (Only read-only tools are auto-approved above; sending email and booking rooms stay gated behind confirmation.)
+3. First use triggers an OAuth flow in the browser.
 
-Search the [MCP server registry](https://github.com/modelcontextprotocol/servers) or [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers) for the current recommended Outlook package — options change frequently.
+**Enterprise note:** some companies control Microsoft Graph app registrations, so your Outlook MCP may need to be an IT-approved or internally-packaged server rather than a public npm package. That's a packaging question, not a blocker — the kit itself is proven to run on a corporate Outlook stack. See `docs/enterprise-mcp-patterns.md` for the WSL/internal-tooling launch pattern.
+
+Search the [MCP server registry](https://github.com/modelcontextprotocol/servers) or [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers) for a public Outlook package if you don't have an internal one.
 
 ---
 

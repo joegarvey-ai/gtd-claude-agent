@@ -309,7 +309,7 @@ Look for a small 🔨 hammer icon in the Claude Desktop chat window, near the te
 3. Click **Create Project**
 4. Name it something like `Personal Assistant` or `GTD Assistant`
 5. Click **Set custom instructions** (or look for a section called "Custom Instructions" or "Project Instructions")
-6. Now you need the system prompt from this repo. Go to [github.com/joegarvey-ai/gtd-claude-agent/blob/main/system-prompt.md](https://github.com/joegarvey-ai/gtd-claude-agent/blob/main/system-prompt.md)
+6. Now you need the system prompt from this repo. Go to [github.com/joegarvey-ai/personal-assistant-kit/blob/main/system-prompt.md](https://github.com/joegarvey-ai/personal-assistant-kit/blob/main/system-prompt.md)
 7. Copy everything **below** the `---` line (that's the horizontal line after the first few lines of instructions)
 8. Paste it into the custom instructions box
 9. Replace all the `[BRACKETED]` placeholders with your own info:

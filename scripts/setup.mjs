@@ -142,15 +142,12 @@ if (clientChoice === "1" || clientChoice === "3") {
     : vaultPath;
 
   const npxCmd = isWindows ? "C:\\\\Program Files\\\\nodejs\\\\npx.cmd" : "npx";
-  const npxArgs = isWindows
-    ? `["-y", "obsidian-mcp", "${escapedVault}"]`
-    : `["-y", "obsidian-mcp", "${escapedVault}"]`;
 
   const config = {
     mcpServers: {
       obsidian: {
         command: npxCmd,
-        args: JSON.parse(npxArgs),
+        args: ["-y", "obsidian-mcp", escapedVault],
         ...(isWindows && {
           env: {
             PATH: "C:\\Program Files\\nodejs;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0;C:\\WINDOWS\\System32;%PATH%",
