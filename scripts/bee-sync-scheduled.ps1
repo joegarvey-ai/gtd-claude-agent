@@ -51,8 +51,12 @@ if (-not $SentinelDir) {
 
 $LogDir    = Join-Path $env:LOCALAPPDATA 'bee-sync'
 $LogFile   = Join-Path $LogDir 'bee-sync.log'
-$HashCache = Join-Path $LogDir 'seen-hashes.json'
+$HashCache = Join-Path $LogDir 'seen-hashes.json'   # convId -> hash we LAST FIRED A SENTINEL FOR
+$StuckFile = Join-Path $LogDir 'stuck-captures.json' # convId -> {reason, first_seen} for review
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDir | Out-Null }
+
+# Shared completeness gate (Test-BeeCaptureReady). Lives beside this script.
+. (Join-Path $PSScriptRoot 'bee-lib.ps1')
 
 $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
@@ -84,33 +88,64 @@ try {
             }
         }
 
-        # Find conversations whose content has changed (or are brand new)
-        $changed = @()
+        # Load the stuck-capture tracker (convId -> {reason, first_seen}) for review surfacing.
+        $stuck = @{}
+        if (Test-Path $StuckFile) {
+            try {
+                $stuckObj = Get-Content $StuckFile -Raw | ConvertFrom-Json
+                foreach ($p in $stuckObj.PSObject.Properties) { $stuck[$p.Name] = $p.Value }
+            } catch { $stuck = @{} }
+        }
+
         $currentFiles = Get-ChildItem $VaultRaw -Recurse -File -Filter "*.md" -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match '\\conversations\\' }
 
+        # Decide, per capture: fire a sentinel only if it is READY (COMPLETED + settled)
+        # AND its content hash differs from the last hash we fired for it. This is the
+        # churn fix: enrichment rewrites of an already-fired capture no longer re-fire.
+        $toFire = @()
         foreach ($f in $currentFiles) {
             $convId = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
             $hash = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
-            if (-not $cache.ContainsKey($convId) -or $cache[$convId] -ne $hash) {
-                $changed += $f
-                $cache[$convId] = $hash
+            $readiness = Test-BeeCaptureReady -Path $f.FullName
+
+            if ($readiness.Status -eq 'ready') {
+                if (-not $cache.ContainsKey($convId) -or $cache[$convId] -ne $hash) {
+                    $toFire += [pscustomobject]@{ File = $f; ConvId = $convId; Hash = $hash }
+                }
+                if ($stuck.ContainsKey($convId)) { $stuck.Remove($convId) }  # recovered
             }
+            elseif ($readiness.Status -eq 'stuck') {
+                if (-not $stuck.ContainsKey($convId)) {
+                    $stuck[$convId] = [pscustomobject]@{ reason = $readiness.Reason; first_seen = (Get-Date -Format 'o'); raw_path = $f.FullName }
+                    Add-Content -Path $LogFile -Value "[$timestamp] STUCK $convId — $($readiness.Reason)"
+                }
+            }
+            # capturing / unsettled / unknown: skip quietly, re-evaluate next sync.
         }
 
-        # Persist updated cache
-        ($cache | ConvertTo-Json -Compress) | Set-Content -Path $HashCache -Encoding UTF8
+        # Persist the stuck tracker for review.
+        if ($stuck.Count -gt 0) { ($stuck | ConvertTo-Json -Compress) | Set-Content -Path $StuckFile -Encoding UTF8 }
+        elseif (Test-Path $StuckFile) { Remove-Item $StuckFile -Force -ErrorAction SilentlyContinue }
 
-        # First-run guard: if the cache didn't exist before, seed it silently — don't flood
-        # sentinels for every historical conversation that was already processed.
+        # First-run guard: seed the cache with the CURRENT hash of every ready capture so
+        # we don't flood sentinels for history. Partials are intentionally left un-seeded
+        # so they fire once when they eventually complete.
         if (-not $cacheExisted) {
-            Add-Content -Path $LogFile -Value "[$timestamp] SEED hash cache seeded with $($currentFiles.Count) existing conversations (no sentinels emitted on first run)"
-        } elseif ($changed) {
+            foreach ($f in $currentFiles) {
+                if ((Test-BeeCaptureReady -Path $f.FullName).Status -eq 'ready') {
+                    $cache[[System.IO.Path]::GetFileNameWithoutExtension($f.Name)] = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
+                }
+            }
+            ($cache | ConvertTo-Json -Compress) | Set-Content -Path $HashCache -Encoding UTF8
+            Add-Content -Path $LogFile -Value "[$timestamp] SEED hash cache seeded with $($cache.Count) ready conversations (no sentinels emitted on first run)"
+        } elseif ($toFire) {
             if (-not (Test-Path $SentinelDir)) {
                 New-Item -ItemType Directory -Force -Path $SentinelDir | Out-Null
             }
-            foreach ($f in $changed) {
-                $convId = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+            foreach ($item in $toFire) {
+                $convId = $item.ConvId
+                $f = $item.File
                 $sentinelPath = Join-Path $SentinelDir "$convId.sentinel.md"
                 $sentinelBody = @"
 ---
@@ -131,7 +166,11 @@ Process per the ``bee-processing`` steering rules and auto-write all outputs (ta
 "@
                 Set-Content -Path $sentinelPath -Value $sentinelBody -Encoding UTF8
                 Add-Content -Path $LogFile -Value "[$timestamp] SENTINEL wrote $convId"
+                # Record the hash we just fired for. Later enrichment rewrites of this same
+                # capture won't re-fire unless the content changes again AND it's still ready.
+                $cache[$convId] = $item.Hash
             }
+            ($cache | ConvertTo-Json -Compress) | Set-Content -Path $HashCache -Encoding UTF8
         }
     } else {
         Add-Content -Path $LogFile -Value "[$timestamp] FAIL exit=$LASTEXITCODE"

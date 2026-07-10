@@ -215,6 +215,18 @@ When [YOUR_NAME] manually asks you to process a specific capture (not via a sent
 
 ---
 
+## Completeness gate (verify before writing)
+
+The sync scripts already gate on this and only write a sentinel for a capture that is COMPLETED and settled — but **re-verify it yourself before writing any Meeting Note**, as a backstop:
+
+1. Read the raw capture's top metadata block (the `- key: value` bullets under the `# Conversation <id>` heading).
+2. **Only process when `state: COMPLETED` AND `end_time` is a real timestamp (not `n/a`).** If `state: CAPTURING` or `end_time: n/a`, the meeting isn't finished — do NOT write outputs. Note it as still capturing and stop; the next sync will re-fire when it completes.
+3. Bee enriches a capture (Summary, Key Takeaways, Suggested Links) for a short window after it completes. If the capture looks sparse (e.g. only a Short Summary, no body sections) even though state is COMPLETED, prefer to wait — process on the next pass once the sections have filled in.
+
+A capture stuck in `CAPTURING` for a long time (the sync tracks these in `stuck-captures.json`) is likely abandoned — leave it for manual review rather than processing partial content.
+
+---
+
 ## Edge Cases
 
 - **No clear meeting boundary** — if the raw file is a jumble of short interactions, group by conversation ID and process each separately

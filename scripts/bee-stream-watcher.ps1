@@ -41,8 +41,13 @@ if (-not $SentinelDir) {
 
 $LogDir          = Join-Path $env:LOCALAPPDATA 'bee-sync'
 $LogFile         = Join-Path $LogDir 'bee-watcher.log'
-$HashCache       = Join-Path $LogDir 'seen-hashes.json'
+$HashCache       = Join-Path $LogDir 'seen-hashes.json'   # convId -> last-fired hash (shared with Layer 1)
+$StuckFile       = Join-Path $LogDir 'stuck-captures.json'
 $DebounceSeconds = 30
+
+# Shared completeness gate (Test-BeeCaptureReady) — same file the scheduled sync uses,
+# so both layers apply an identical "COMPLETED + settled" rule and can't drift.
+. (Join-Path $PSScriptRoot 'bee-lib.ps1')
 
 # Events that should trigger a sync
 $TriggerEvents = @(
@@ -140,29 +145,37 @@ while ($true) {
                             } catch { $cache = @{}; $cacheExisted = $false }
                         }
 
-                        # Detect content changes via SHA256 hash
-                        $changed = @()
+                        # Fire a sentinel only for READY captures (COMPLETED + settled) whose
+                        # content hash differs from the last hash we fired — same gate as Layer 1.
                         $currentFiles = Get-ChildItem $VaultRaw -Recurse -File -Filter "*.md" -ErrorAction SilentlyContinue |
                             Where-Object { $_.FullName -match '\\conversations\\' }
+                        $toFire = @()
                         foreach ($f in $currentFiles) {
                             $convId = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
                             $hash = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
-                            if (-not $cache.ContainsKey($convId) -or $cache[$convId] -ne $hash) {
-                                $changed += $f
-                                $cache[$convId] = $hash
+                            if ((Test-BeeCaptureReady -Path $f.FullName).Status -eq 'ready') {
+                                if (-not $cache.ContainsKey($convId) -or $cache[$convId] -ne $hash) {
+                                    $toFire += [pscustomobject]@{ File = $f; ConvId = $convId; Hash = $hash }
+                                }
                             }
                         }
-                        ($cache | ConvertTo-Json -Compress) | Set-Content -Path $HashCache -Encoding UTF8
 
-                        # First-run guard — don't flood sentinels for historical conversations
+                        # First-run guard — seed ready captures' current hashes, emit nothing.
                         if (-not $cacheExisted) {
-                            Write-WatcherLog "SEED hash cache seeded with $($currentFiles.Count) existing conversations (no sentinels on first run)"
-                        } elseif ($changed) {
+                            foreach ($f in $currentFiles) {
+                                if ((Test-BeeCaptureReady -Path $f.FullName).Status -eq 'ready') {
+                                    $cache[[System.IO.Path]::GetFileNameWithoutExtension($f.Name)] = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
+                                }
+                            }
+                            ($cache | ConvertTo-Json -Compress) | Set-Content -Path $HashCache -Encoding UTF8
+                            Write-WatcherLog "SEED hash cache seeded with $($cache.Count) ready conversations (no sentinels on first run)"
+                        } elseif ($toFire) {
                             if (-not (Test-Path $SentinelDir)) {
                                 New-Item -ItemType Directory -Force -Path $SentinelDir | Out-Null
                             }
-                            foreach ($f in $changed) {
-                                $convId = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+                            foreach ($item in $toFire) {
+                                $convId = $item.ConvId
+                                $f = $item.File
                                 $sentinelPath = Join-Path $SentinelDir "$convId.sentinel.md"
                                 $sentinelBody = @"
 ---
@@ -183,7 +196,9 @@ Process per the ``bee-processing`` steering rules and auto-write all outputs (ta
 "@
                                 Set-Content -Path $sentinelPath -Value $sentinelBody -Encoding UTF8
                                 Write-WatcherLog "SENTINEL wrote $convId"
+                                $cache[$convId] = $item.Hash
                             }
+                            ($cache | ConvertTo-Json -Compress) | Set-Content -Path $HashCache -Encoding UTF8
                         }
                     } else {
                         Write-WatcherLog "SYNC failed exit=$LASTEXITCODE"
