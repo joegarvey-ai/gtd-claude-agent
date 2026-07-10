@@ -11,11 +11,40 @@ cd evals
 npm install
 ```
 
-You need an `ANTHROPIC_API_KEY` environment variable set:
+### Structural check (no key)
+
+The wiring check needs no credentials and runs anywhere:
+
+```bash
+npm run check   # typecheck-adjacent: shipped prompts/hooks/fixtures load and carry their rules
+```
+
+CI always runs this (the `structural` job). It catches broken repoints, malformed
+prompts/hooks, and missing fixtures for free — before spending a token.
+
+### Live behavioral suites — pick a backend
+
+**First-party Claude API (default):**
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+npm run eval
 ```
+
+**Amazon Bedrock (no static key — uses your AWS credential chain):** authenticates
+via SigV4 over your normal AWS creds (env vars, `~/.aws` profile, or an assumed role),
+so there's no key to rotate. Model IDs get an `anthropic.` prefix automatically.
+
+```bash
+npm install @anthropic-ai/bedrock-sdk   # one-time, only for this backend
+export EVAL_BACKEND=bedrock
+export AWS_REGION=us-east-1              # or your region
+# AWS creds resolved from the standard chain (SSO/role/profile/env)
+npm run eval
+```
+
+CI uses the first-party backend gated on an `ANTHROPIC_API_KEY` secret; Bedrock is
+for running the live suites locally against existing AWS credentials.
 
 ## Running
 

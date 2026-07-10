@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check": "tsx suites/structural.ts",
     "eval": "tsx suites/run-all.ts",
     "eval:inbox": "tsx suites/inbox-routing.ts",
     "eval:bee": "tsx suites/bee-processing.ts",

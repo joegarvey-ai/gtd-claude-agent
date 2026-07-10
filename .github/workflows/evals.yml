@@ -1,9 +1,11 @@
 name: Evals
 
-# Runs the functional eval suites against the SHIPPED prompt/steering artifacts.
-# The suites call the Claude API, so they need an ANTHROPIC_API_KEY secret and
-# cost a small amount per run. To avoid spurious failures where the secret isn't
-# available (forks, PRs from forks), the run is gated on the secret being present.
+# Two jobs:
+#   structural — typecheck + no-API wiring checks (shipped prompts/hooks/fixtures
+#                load and carry their rules). Always runs, no secret, free.
+#   live       — the behavioral suites that call the model. Gated on an
+#                ANTHROPIC_API_KEY secret, so forks (and repos without the secret)
+#                skip cleanly rather than fail. Costs a few cents per run.
 
 on:
   push:
@@ -23,7 +25,25 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  evals:
+  structural:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        working-directory: evals
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        working-directory: evals
+        run: npx tsc --noEmit
+      - name: Structural check (no API)
+        working-directory: evals
+        run: npm run check
+
+  live:
+    needs: structural
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +55,7 @@ jobs:
         run: |
           if [ -z "$ANTHROPIC_API_KEY" ]; then
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::ANTHROPIC_API_KEY not set — skipping evals (expected on forks)."
+            echo "::notice::ANTHROPIC_API_KEY not set — skipping live evals (expected on forks). Structural checks already ran."
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
@@ -51,16 +71,11 @@ jobs:
         working-directory: evals
         run: npm install --no-audit --no-fund
 
-      - name: Typecheck
-        if: steps.gate.outputs.run == 'true'
-        working-directory: evals
-        run: npx tsc --noEmit
-
       - name: Run eval suites
         if: steps.gate.outputs.run == 'true'
         working-directory: evals
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Pin the eval model here if the default in runner.ts should be overridden.
+          # Override the eval model here if needed (default: claude-sonnet-5).
           # EVAL_MODEL: claude-sonnet-5
         run: npm run eval

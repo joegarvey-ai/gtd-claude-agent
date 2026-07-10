@@ -58,13 +58,39 @@ export interface SuiteResult {
   totalOutputTokens: number;
 }
 
-const client = new Anthropic();
+// Backend + model selection.
+//   EVAL_BACKEND=anthropic (default) → first-party Claude API, needs ANTHROPIC_API_KEY.
+//   EVAL_BACKEND=bedrock             → Amazon Bedrock via SigV4 over the standard AWS
+//                                      credential chain (env/profile/role) — no static
+//                                      key, no 12h expiry. Model IDs take an `anthropic.` prefix.
+// EVAL_MODEL overrides the base model. claude-sonnet-4-20250514 was deprecated
+// (retires 2026-06-15); claude-sonnet-5 is its replacement.
+const BACKEND = process.env.EVAL_BACKEND ?? "anthropic";
+const BASE_MODEL = process.env.EVAL_MODEL ?? "claude-sonnet-5";
+export const MODEL = BACKEND === "bedrock" ? `anthropic.${BASE_MODEL}` : BASE_MODEL;
 
-// Single source of truth for the eval model. Override with EVAL_MODEL if needed.
-// claude-sonnet-4-20250514 was deprecated (retires 2026-06-15); claude-sonnet-5
-// is its replacement. Evals should pass on Sonnet — if they only pass on Opus,
-// the prompt needs improvement.
-const MODEL = process.env.EVAL_MODEL ?? "claude-sonnet-5";
+// Lazy, memoized client — constructed on first request, NOT at import time. This lets
+// tooling import the loaders (loadHookPrompt/loadFixture) without any credentials,
+// which the structural CI check relies on.
+let _client: Anthropic | null = null;
+async function getClient(): Promise<Anthropic> {
+  if (_client) return _client;
+  if (BACKEND === "bedrock") {
+    // Non-literal specifier so tsc doesn't require the package for the default path.
+    const pkg = "@anthropic-ai/bedrock-sdk";
+    const mod: any = await import(pkg).catch(() => {
+      throw new Error(
+        "EVAL_BACKEND=bedrock requires the Bedrock SDK: run `npm install @anthropic-ai/bedrock-sdk` in evals/"
+      );
+    });
+    const Client = mod.AnthropicBedrockMantle ?? mod.AnthropicBedrock;
+    if (!Client) throw new Error("Bedrock SDK present but no AnthropicBedrockMantle/AnthropicBedrock export found");
+    _client = new Client({ awsRegion: process.env.AWS_REGION ?? "us-east-1" }) as unknown as Anthropic;
+  } else {
+    _client = new Anthropic();
+  }
+  return _client;
+}
 
 export function loadSystemPrompt(filename: string): string {
   const path = resolve(ROOT, filename);
@@ -171,6 +197,7 @@ export async function runEval(evalCase: EvalCase): Promise<EvalResult> {
 
   const start = Date.now();
 
+  const client = await getClient();
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 4096,
@@ -236,6 +263,7 @@ export async function runToolTurn(
   history: Anthropic.MessageParam[],
   tools: Anthropic.Tool[]
 ): Promise<ToolTurnResult> {
+  const client = await getClient();
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 4096,
