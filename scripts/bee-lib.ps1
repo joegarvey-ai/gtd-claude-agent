@@ -8,7 +8,7 @@
 .DESCRIPTION
     The key export is Test-BeeCaptureReady, the deterministic completeness gate:
     a capture is only "ready" to process once Bee marks it COMPLETED, it has a real
-    end_time, and it hasn't been touched (updated_at) within a settle window — so we
+    end_time, and it hasn't been touched (updated_at) within a settle window - so we
     never write a meeting note that Bee is still enriching. Captures still CAPTURING
     are skipped; ones stuck CAPTURING past a threshold are flagged "stuck" so they can
     be surfaced for review instead of silently lost.
@@ -20,7 +20,7 @@
 #   - end_time: n/a
 #   - state: CAPTURING
 #   - updated_at: 2026-07-01T21:37:39.194Z
-# Only the block BEFORE the first "## " section is parsed — later sections (e.g.
+# Only the block BEFORE the first "## " section is parsed - later sections (e.g.
 # "## Primary Location") repeat keys like created_at and would otherwise be misread.
 function Get-BeeMetadata {
     param([string]$Path)
@@ -86,12 +86,12 @@ function Test-BeeCaptureReady {
     if ($state -eq 'CAPTURING') {
         if ($start -and (($Now - $start).TotalHours -ge $StuckHours)) {
             $hrs = [math]::Round(($Now - $start).TotalHours, 1)
-            return [pscustomobject]@{ Status = 'stuck'; Reason = "CAPTURING for ${hrs}h (>= ${StuckHours}h) — likely abandoned" }
+            return [pscustomobject]@{ Status = 'stuck'; Reason = "CAPTURING for ${hrs}h (>= ${StuckHours}h) - likely abandoned" }
         }
         return [pscustomobject]@{ Status = 'capturing'; Reason = 'still CAPTURING' }
     }
 
-    # Unknown / missing state — be conservative, don't process. Surface if it's old.
+    # Unknown / missing state - be conservative, don't process. Surface if it's old.
     if ($start -and (($Now - $start).TotalHours -ge $StuckHours)) {
         return [pscustomobject]@{ Status = 'stuck'; Reason = "state='$state' unresolved for >= ${StuckHours}h" }
     }

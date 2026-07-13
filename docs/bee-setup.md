@@ -13,20 +13,24 @@
 ```
 Bee wearable
    │
-   ▼  (background watcher runs `bee stream`)
-<vault>/05 Reference/Bee/_raw/             ← raw captures, never edited
+   ▼  (scheduled sync every 15 min + optional bee stream watcher)
+<vault>/<raw folder>/                       ← raw captures, never edited
    │
-   ▼  (Claude Desktop "Bee Processor" project OR Kiro)
-<vault>/00 Inbox/Bee/                      ← stack-ranked tasks per meeting
-<vault>/05 Reference/<Employer>/Meeting Notes/ ← cleaned work meeting summaries (common case)
-<vault>/05 Reference/Meeting Notes/        ← cleaned personal meeting summaries
-<vault>/People/<name>.md                   ← structured, evolving bios
+   ▼  writes a sentinel → <workspace>/.kiro/bee-inbox/<id>.sentinel.md
+   │
+   ▼  (Claude Code consumer — primary — OR the Claude Desktop "Bee Processor" project)
+<vault>/<tasks folder>/                      ← stack-ranked tasks per meeting
+<vault>/<meeting notes folder>/              ← cleaned meeting summaries
+<vault>/<people folder>/<name>.md            ← structured, evolving bios
 ```
+
+The output folders are yours to choose; the Claude Code consumer reads them from
+`.claude/bee-paths.local.json` (see "Automatic processing on Claude Code" below).
 
 Two agents are involved:
 
-- **Bee Processor** — a dedicated Claude Desktop project with its own focused system prompt. Its only job is processing raw captures into the three output folders.
-- **GTD Assistant** — your main project. Reads the processed outputs like any other inbox or reference material. Never touches `_raw/`.
+- **Bee Processor** — on Claude Code this is the `bee-processor` subagent (`.claude/agents/bee-processor.md`), driven by the `/process-bee-inbox` command or the scheduled `run-bee-process.ps1` runner. On Claude Desktop it is a dedicated project with the `system-prompt-bee-processor.md` instructions. Either way its only job is turning raw captures into the three outputs.
+- **GTD Assistant** — your main project. Reads the processed outputs like any other inbox or reference material. Never touches the raw folder.
 
 The two communicate through the vault. No direct handoff, no cross-prompt contamination.
 
@@ -121,72 +125,77 @@ You don't need to do anything else. The GTD Assistant reads the already-processe
 
 ---
 
-## Step 6: Event-driven sync (the real-time piece)
+## Step 6: Automatic sync (the real-time piece)
 
-Running `bee sync` manually is fine for trying it out, but the real win is having captures flow into Obsidian automatically as meetings end.
+Running `bee sync` manually is fine for trying it out, but the real win is having captures flow into Obsidian automatically as meetings end. On **Windows**, this repo ships the scripts to do it — a two-layer design in `scripts/` (see [`scripts/README.md`](../scripts/README.md)):
 
-The Bee CLI has a `bee stream` command that emits live events. When a conversation completes, you can trigger a targeted sync of just that conversation.
+- **Layer 1 — scheduled sync (`scripts/install-bee-sync-task.ps1`):** installs the `BeeSync15Min` task, which runs `bee-sync-scheduled.ps1` every 15 minutes. On first run it prompts for your vault's raw folder and stores it in `%LOCALAPPDATA%\bee-sync\config.ps1`. This is the reliable safety net.
+- **Layer 2 — event-driven watcher (`scripts/install-bee-watcher-autostart.ps1`):** installs `bee-stream-watcher.ps1` to start at login. It reads `bee stream --json` and triggers a targeted sync ~30s after each conversation completes, for near-real-time updates. Reuses the Layer 1 config.
 
-### Option A — Simple: scheduled polling
+Both layers write a sentinel into `.kiro/bee-inbox/` for each genuinely new, completed capture (SHA256 content check + a COMPLETED-and-settled completeness gate), which the Claude Code consumer then processes (next section).
 
-If you want something minimal, schedule `bee sync` to run every 15 minutes.
+**PowerShell authoring note (for anyone editing these scripts):** save them with **CRLF line endings and clean ASCII only** (no em dashes or smart quotes), and don't wrap native commands like `schtasks` in `$ErrorActionPreference='Stop'` — check `$LASTEXITCODE` instead. A prior install broke because a script was saved LF-only with em dashes, which PowerShell 5.1 fails to parse; the task then dispatched but the script never ran.
 
-**Mac (cron):**
-```bash
-crontab -e
-# Add:
-*/15 * * * * /usr/local/bin/bee sync --output "$HOME/path/to/vault/05 Reference/Bee/_raw" > /dev/null 2>&1
-```
+### Mac / Linux
 
-**Windows (Task Scheduler):**
-
-Create a scheduled task that runs this PowerShell command every 15 minutes:
-```powershell
-bee sync --output "C:\Users\YOUR_USERNAME\path\to\vault\05 Reference\Bee\_raw"
-```
-
-### Option B — Event-driven: `bee stream` watcher
-
-A small watcher script runs `bee stream --json` in the background. When it sees an `update-conversation` event marking a conversation as complete, it runs a targeted sync.
-
-A reference watcher script is planned for a future release of this repo. In the meantime, you can write your own — the event shape is documented in the [Bee Realtime docs](https://docs.bee.computer/docs/realtime).
+Reference scripts aren't shipped for Mac/Linux yet. The rough mapping (cron or launchd/systemd running `bee sync`, plus a small sentinel-writer) is in [`scripts/README.md`](../scripts/README.md); the `bee stream` event shape is in the [Bee Realtime docs](https://docs.bee.computer/docs/realtime).
 
 ---
 
-## Kiro users: automatic processing via hooks
+## Automatic processing on Claude Code (primary)
 
-If you use [Kiro](https://kiro.ai) alongside Claude Desktop, this repo includes two hooks for Bee processing — an automatic one and a manual fallback.
-
-### Auto hook: `bee-sentinel-auto-process.kiro.hook`
-
-Fires on `fileCreated` for `.kiro/bee-inbox/*.sentinel.md` — the sentinel the sync scripts write when a capture lands. Uses a sentinel-based pattern so it works even when your vault lives **outside** the Kiro workspace (common with iCloud/OneDrive-synced vaults on Windows):
+The processing half runs on **Claude Code**. The sync scripts write a sentinel into
+`.kiro/bee-inbox/` when a capture lands; a Claude Code consumer drains the sentinels into
+your vault. This works even when your vault lives **outside** the repo (common with
+iCloud/OneDrive-synced vaults) — Claude Code's file tools write directly to the vault.
 
 ```
 bee sync → writes raw to vault → writes sentinel to .kiro/bee-inbox/
-    → Kiro hook fires on sentinel creation
-    → for each pending sentinel:
-        idempotency guard (skip if already processed)
-        skip if the capture is still CAPTURING (partial)
-        process (redaction, tasks, notes, people)
-        write the three outputs to the vault
+    → BeeProcess30Min task runs run-bee-process.ps1 → claude -p '/process-bee-inbox'
+      (or you run /process-bee-inbox yourself)
+    → the bee-processor subagent, for each pending sentinel:
+        idempotency guard (skip if bee_conversation_id already in vault)
+        completeness gate (skip partial/sparse; leave its sentinel)
+        redact, draft tasks / meeting note / People notes
+        write the outputs directly to the vault
         delete the sentinel — only after outputs land
 ```
 
-> **Reliability caveat:** Kiro agent hooks only fire while the Kiro workspace is open, and a background file write (from the scheduled sync) doesn't always trigger them. So treat this hook as *best-effort* — if sentinels pile up in `.kiro/bee-inbox/`, use the manual command below.
+### One-time setup
 
-### Manual fallback: `bee-process-inbox.kiro.hook` (reliable)
+1. **Point the consumer at your vault folders.** Copy `.claude/bee-paths.example.json` to
+   `.claude/bee-paths.local.json` (gitignored) and set the vault-relative folders:
+   `raw_subpath`, `tasks_dir`, `meeting_notes_dir`, `people_dir`, and optional
+   `voice_observations_file`. Set `collapse_work_personal_split` to `true` to route every
+   meeting note to one folder, or `false` to keep a work/personal split. The vault root is
+   derived from each sentinel's `raw_path`, so you never store an absolute path here.
+2. **Manual path (reliable):** in a Claude Code session opened in the repo, run
+   `/process-bee-inbox` (or say "process my Bee inbox"). It drains all pending sentinels in
+   one pass.
+3. **Scheduled path:** run `scripts/install-bee-process-task.ps1` to install the
+   `BeeProcess30Min` task, which runs the manual command headlessly every 30 minutes. It
+   early-outs cheaply when no sentinels are pending. Requires `claude` on your WSL PATH.
 
-A `userTriggered` hook — click it in Kiro, or say **"process my Bee inbox."** It runs the exact same close-the-loop logic as the auto hook but over **all** pending sentinels in one pass, so it's the guaranteed way to drain a backlog. This is the recommended day-to-day path given the auto-hook caveat above.
-
-Feature notes (both hooks):
-- **Idempotency guard** — a capture already written to the vault (matched by `bee_conversation_id`) is skipped, not duplicated.
-- **Partial capture handling** — an in-progress recording is left for the next sync to re-fire when complete.
+Feature notes:
+- **Idempotency guard** — a capture already written to the vault (matched by
+  `bee_conversation_id`) is skipped, not duplicated.
+- **Completeness gate** — an in-progress or still-enriching capture is left for the next
+  sync/run to re-fire when complete.
 - **Append-mode People notes** — existing bios are updated, not overwritten.
 - **Batch processing** — multiple sentinels handled in a single pass.
 
-When the vault lives outside the workspace and the agent can't write it directly via MCP, outputs are staged to `.kiro/bee-inbox/_output/` and the last-mile vault write is done by `scripts/apply-bee-outputs.template.ps1` (see that file for configuration). Either way, a sentinel is deleted only after its outputs land.
+The consumer follows the processing rules in `.kiro/steering/bee-processing.md` (the rules
+file is shared; only the runtime changed).
 
-Both hooks follow the processing rules in `.kiro/steering/bee-processing.md`.
+## Kiro users (deprecated path)
+
+The two Kiro Bee hooks (`.kiro/hooks/bee-sentinel-auto-process.kiro.hook` and
+`bee-process-inbox.kiro.hook`) are **disabled** — the maintainer moved to the Claude Code
+consumer above. They remain in the repo, `enabled: false`, only as a reference if you still
+run this pipeline under Kiro. The old Kiro/MCP flow staged outputs to
+`.kiro/bee-inbox/_output/` and used `scripts/apply-bee-outputs.template.ps1` for the
+last-mile write because Kiro couldn't write outside the workspace; Claude Code writes to the
+vault directly, so that staging step is gone.
 
 ---
 

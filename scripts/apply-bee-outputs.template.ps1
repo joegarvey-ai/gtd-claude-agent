@@ -1,4 +1,4 @@
-# Bee Capture Output Sync Script — Template
+# Bee Capture Output Sync Script - Template
 #
 # This script handles the "last mile" of Bee capture processing: taking staged
 # outputs from Kiro's processing directory and writing them into the Obsidian vault.
@@ -10,10 +10,10 @@
 # directory and this script handles the actual vault writes.
 #
 # The script handles three operations:
-# 1. COPY — new files (tasks, meeting notes) are written directly
-# 2. APPEND — existing People notes get new content prepended/appended without
+# 1. COPY - new files (tasks, meeting notes) are written directly
+# 2. APPEND - existing People notes get new content prepended/appended without
 #             overwriting existing sections
-# 3. CLEANUP — sentinel files and staging directories are removed after success
+# 3. CLEANUP - sentinel files and staging directories are removed after success
 #
 # USAGE:
 #   1. Replace [VAULT_PATH] with your Obsidian vault path
@@ -134,7 +134,7 @@ foreach ($file in $outputFiles) {
             Write-Utf8File -Path $destPath -Content $merged
             Write-Host "[APPEND] $relativePath"
         } else {
-            # File doesn't exist yet — write as new (strip sentinel)
+            # File doesn't exist yet - write as new (strip sentinel)
             Write-Utf8File -Path $destPath -Content $newContent
             Write-Host "[NEW (from append)] $relativePath"
         }

@@ -1,8 +1,19 @@
 # Kiro Automation for GTD Claude Agent
 
-This directory contains [Kiro](https://kiro.ai) workspace configuration that complements the Claude Desktop setup. If you use Kiro alongside Claude Desktop, dropping this folder into your workspace gives you **near-hands-off** Bee capture processing — new meetings flow from your wearable into clean, structured Obsidian notes. An auto-hook attempts this on its own (best-effort — Kiro hooks only fire while the workspace is open), and a one-click manual command ("process my Bee inbox") reliably drains anything the auto-hook missed.
+> **Bee hooks are deprecated (moved to Claude Code).** The two Bee hooks in `hooks/` are
+> disabled (`enabled: false`). Bee processing now runs on **Claude Code** via the
+> `bee-processor` subagent (`.claude/agents/bee-processor.md`), the `/process-bee-inbox`
+> command, and the scheduled `scripts/run-bee-process.ps1` runner. See the main
+> [`CLAUDE.md`](../CLAUDE.md) ("Bee processing on Claude Code") and
+> [`docs/bee-setup.md`](../docs/bee-setup.md). This directory is kept for the shared
+> processing rules (`steering/bee-processing.md`, still used by both runtimes), the
+> sentinel inbox (`bee-inbox/`, still where the sync drops sentinels), and as a reference
+> for anyone still running the pipeline under Kiro. The rest of this file describes that
+> legacy Kiro path.
 
-If you don't use Kiro, ignore this directory. The Claude Desktop flow documented in the main README works standalone.
+This directory contains [Kiro](https://kiro.ai) workspace configuration. Historically, if you used Kiro alongside Claude Desktop, dropping this folder into your workspace gave you **near-hands-off** Bee capture processing — new meetings flow from your wearable into clean, structured Obsidian notes. An auto-hook attempted this on its own (best-effort — Kiro hooks only fire while the workspace is open), and a one-click manual command ("process my Bee inbox") drained anything the auto-hook missed.
+
+If you don't use Kiro, ignore the hooks here — the Claude Code consumer is the supported path, and the Claude Desktop flow documented in the main README works standalone.
 
 ---
 

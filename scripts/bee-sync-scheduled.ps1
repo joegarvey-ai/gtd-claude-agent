@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Scheduled bee sync — pulls Bee lifelog captures into the Obsidian vault.
+    Scheduled bee sync - pulls Bee lifelog captures into the Obsidian vault.
 
 .DESCRIPTION
     Runs `bee sync` on a schedule (typically every 15 min via Task Scheduler).
@@ -10,7 +10,7 @@
 
 .NOTES
     Called by the scheduled task created by scripts/install-bee-sync-task.ps1.
-    The vault path is stored in %LOCALAPPDATA%\bee-sync\config.ps1 — re-run
+    The vault path is stored in %LOCALAPPDATA%\bee-sync\config.ps1 - re-run
     the installer to change it, or edit the config file directly.
 #>
 
@@ -61,7 +61,7 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDi
 $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
 try {
-    # Resolve bee CLI — installed globally via npm, typically at %APPDATA%\npm\bee.cmd
+    # Resolve bee CLI - installed globally via npm, typically at %APPDATA%\npm\bee.cmd
     $beeCmd = Join-Path $env:APPDATA 'npm\bee.cmd'
     if (-not (Test-Path $beeCmd)) {
         # Fallback to PATH lookup
@@ -73,7 +73,7 @@ try {
     if ($LASTEXITCODE -eq 0) {
         Add-Content -Path $LogFile -Value "[$timestamp] OK sync completed"
 
-        # Load the hash cache (content-based change detection — file timestamps lie because
+        # Load the hash cache (content-based change detection - file timestamps lie because
         # bee sync rewrites every file every run even when content hasn't changed).
         $cache = @{}
         $cacheExisted = Test-Path $HashCache
@@ -82,7 +82,7 @@ try {
                 $cachedObj = Get-Content $HashCache -Raw | ConvertFrom-Json
                 foreach ($prop in $cachedObj.PSObject.Properties) { $cache[$prop.Name] = $prop.Value }
             } catch {
-                # Cache corrupt — treat as first run
+                # Cache corrupt - treat as first run
                 $cache = @{}
                 $cacheExisted = $false
             }
@@ -118,7 +118,7 @@ try {
             elseif ($readiness.Status -eq 'stuck') {
                 if (-not $stuck.ContainsKey($convId)) {
                     $stuck[$convId] = [pscustomobject]@{ reason = $readiness.Reason; first_seen = (Get-Date -Format 'o'); raw_path = $f.FullName }
-                    Add-Content -Path $LogFile -Value "[$timestamp] STUCK $convId — $($readiness.Reason)"
+                    Add-Content -Path $LogFile -Value "[$timestamp] STUCK $convId - $($readiness.Reason)"
                 }
             }
             # capturing / unsettled / unknown: skip quietly, re-evaluate next sync.

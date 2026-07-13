@@ -50,9 +50,12 @@ This system has distinct agent roles. Each role has a defined scope, defined inp
 
 ### Bee Processor
 
-**System prompt:** `system-prompt-bee-processor.md`
-**Kiro steering:** `.kiro/steering/bee-processing.md`
-**Kiro hook:** `.kiro/hooks/bee-sentinel-auto-process.kiro.hook`
+**Claude Code subagent (primary):** `.claude/agents/bee-processor.md`
+**Claude Code command:** `.claude/commands/process-bee-inbox.md` ("process my Bee inbox")
+**Scheduled runner:** `scripts/run-bee-process.ps1` (installed via `scripts/install-bee-process-task.ps1`)
+**System prompt (Claude Desktop adopters):** `system-prompt-bee-processor.md`
+**Kiro steering (shared rules):** `.kiro/steering/bee-processing.md`
+**Kiro hooks:** `.kiro/hooks/bee-*.kiro.hook` — **DEPRECATED / disabled** (the maintainer moved off Kiro; the Claude Code consumer above replaced them)
 **Scope:** Ingesting raw Bee lifelog captures and producing structured outputs.
 
 **Does:**
@@ -237,34 +240,47 @@ When in doubt, exclude. Do not paraphrase redacted content — omit entirely. If
 
 ---
 
-## Kiro hooks
+## Bee processing on Claude Code (primary)
 
-Hooks provide event-driven automation. They fire on file events or user triggers.
+The Bee processing half runs on **Claude Code** now, not Kiro. The PowerShell sync (Layer 1
+scheduled task + Layer 2 watcher) writes sentinels into `.kiro/bee-inbox/`; a Claude Code
+consumer drains them.
 
-| Hook | Trigger | What it does |
-|------|---------|-------------|
-| `bee-sentinel-auto-process` | `fileCreated` on `.kiro/bee-inbox/*.sentinel.md` | Best-effort auto-processing of new Bee sentinels: idempotency guard → skip partial captures → produce outputs → write to vault → delete sentinel. Kiro agent hooks only fire while the workspace is open and can miss background writes. |
-| `bee-process-inbox` (manual) | `userTriggered` | **Reliable fallback.** Processes ALL pending sentinels in one pass with the same close-the-loop logic. Use when sentinels pile up or the auto-hook didn't fire. |
-| `weekly-status-update` | `userTriggered` | Fetches tasks, drafts status updates, writes after approval |
+| Component | Trigger | What it does |
+|-----------|---------|-------------|
+| `.claude/agents/bee-processor.md` | invoked by the command/runner | The subagent that does the work: for each pending sentinel — idempotency guard → completeness gate (skip partial/sparse) → redact → write the three outputs to the vault → delete the sentinel. Tools scoped to Read/Write/Glob/Grep/Bash; no send/ticket/email. |
+| `.claude/commands/process-bee-inbox.md` | `/process-bee-inbox` (manual) | The reliable manual path. Drains ALL pending sentinels in one pass. |
+| `scripts/run-bee-process.ps1` | scheduled task `BeeProcess30Min` | Headless runner: `claude -p '/process-bee-inbox'` on a cadence (every 30 min by default), cheap early-out when no sentinels pend. Replaces the retired Kiro auto-hook. |
 
-> The two Bee hooks share one procedure (idempotency guard, partial-capture skip, delete-after-write). The auto-hook is best-effort; the manual `bee-process-inbox` is the guaranteed path.
+Output folders are read from `.claude/bee-paths.local.json` (gitignored, personalized;
+`.claude/bee-paths.example.json` is the tracked template). The vault root is derived from
+each sentinel's `raw_path`, so no absolute vault path lives in a tracked file.
 
 ### Sentinel-based processing flow
 
 ```
 bee sync (scheduled/watcher) → raw capture to vault → sentinel to .kiro/bee-inbox/
-    → bee-sentinel-auto-process fires (best-effort, Kiro open)
-      — OR — you run bee-process-inbox manually (reliable fallback)
-    → for each pending sentinel:
+    → BeeProcess30Min runs run-bee-process.ps1 → claude -p '/process-bee-inbox'
+      — OR — you run /process-bee-inbox manually
+    → bee-processor subagent, for each pending sentinel:
         idempotency guard (skip if bee_conversation_id already in vault)
-        skip if raw capture state is still CAPTURING (partial)
-        process (redaction, slug generation, output drafting)
-        write the three outputs to the vault
-        delete the sentinel (only after outputs are written)
+        completeness gate (skip if state still CAPTURING / sparse; leave its sentinel)
+        redact, generate slug, draft outputs
+        write the three outputs directly to the vault (Write tool reaches outside the repo)
+        delete the sentinel (only after outputs land)
     → summarize
 ```
 
-Note: when the vault lives outside the workspace and the agent can't write it directly via MCP, outputs are staged to `_output/` and the `apply-bee-outputs` script does the last-mile vault write. The close-the-loop guarantee is the same either way: a sentinel is deleted only after its outputs land.
+Unlike the old Kiro/MCP path, Claude Code writes directly to the vault, so there is no
+`_output/` staging or `apply-bee-outputs` last-mile step. The close-the-loop guarantee is
+the same: a sentinel is deleted only after its outputs land.
+
+### Retired Kiro hooks
+
+`.kiro/hooks/bee-sentinel-auto-process.kiro.hook` and `bee-process-inbox.kiro.hook` are
+**deprecated and disabled** (`enabled: false`). They no longer fire — the maintainer moved
+off Kiro. They are kept as a reference for anyone still running this pipeline under Kiro.
+The `weekly-status-update` hook is unrelated to Bee and unaffected.
 
 ---
 
@@ -275,15 +291,22 @@ personal-assistant-kit/
 ├── CLAUDE.md                          ← You are here
 ├── README.md                          ← Public-facing docs
 ├── system-prompt.md                   ← GTD Assistant system prompt (generic, [BRACKETED])
-├── system-prompt-bee-processor.md     ← Bee Processor system prompt (generic)
+├── system-prompt-bee-processor.md     ← Bee Processor system prompt (Claude Desktop adopters)
 ├── claude_desktop_config.example.json ← Basic MCP config example
 ├── claude_desktop_config.advanced.example.json
+├── .claude/                           ← Claude Code runtime (primary Bee consumer)
+│   ├── agents/
+│   │   └── bee-processor.md           ← Bee Processor subagent (replaces the Kiro hooks)
+│   ├── commands/
+│   │   └── process-bee-inbox.md       ← "/process-bee-inbox" manual drain
+│   ├── bee-paths.example.json         ← tracked path-map template ([BRACKETED])
+│   └── bee-paths.local.json           ← gitignored, personalized vault path map
 ├── .kiro/
 │   ├── bee-inbox/                     ← Sentinel processing state (gitignored contents)
 │   │   └── .gitkeep
 │   ├── hooks/
-│   │   ├── bee-sentinel-auto-process.kiro.hook  ← auto (best-effort)
-│   │   ├── bee-process-inbox.kiro.hook          ← manual (reliable fallback)
+│   │   ├── bee-sentinel-auto-process.kiro.hook  ← DEPRECATED (disabled; moved to Claude Code)
+│   │   ├── bee-process-inbox.kiro.hook          ← DEPRECATED (disabled; moved to Claude Code)
 │   │   └── weekly-status-update.kiro.hook
 │   ├── settings/
 │   │   └── mcp.example.json           ← MCP config template (Obsidian + Outlook + Slack)
@@ -293,12 +316,16 @@ personal-assistant-kit/
 │   └── specs/
 │       └── operational-framework-example/  ← Template for non-code Kiro specs
 ├── scripts/
-│   ├── apply-bee-outputs.template.ps1 ← Vault write-back script
-│   ├── bee-stream-watcher.ps1         ← Real-time Bee event watcher
-│   ├── bee-sync-scheduled.ps1         ← Scheduled Bee sync (every 15 min)
-│   ├── bee-sync-silent.vbs            ← Silent launcher for scheduled task
-│   ├── install-bee-sync-task.ps1      ← Installs Windows scheduled task
-│   └── install-bee-watcher-autostart.ps1
+│   ├── bee-lib.ps1                    ← Shared completeness gate (Test-BeeCaptureReady)
+│   ├── bee-sync-scheduled.ps1         ← Scheduled Bee sync (every 15 min, Layer 1)
+│   ├── bee-stream-watcher.ps1         ← Real-time Bee event watcher (Layer 2)
+│   ├── bee-sync-silent.vbs            ← Silent launcher for the sync task
+│   ├── install-bee-sync-task.ps1      ← Installs the sync scheduled task
+│   ├── install-bee-watcher-autostart.ps1
+│   ├── run-bee-process.ps1            ← Headless Claude Code consumer runner
+│   ├── bee-process-silent.vbs        ← Silent launcher for the process task
+│   ├── install-bee-process-task.ps1  ← Installs the BeeProcess30Min task
+│   └── apply-bee-outputs.template.ps1 ← Legacy Kiro/MCP vault write-back (unused by Claude Code)
 ├── docs/
 │   ├── bee-setup.md
 │   ├── enterprise-mcp-patterns.md
@@ -354,8 +381,9 @@ Be precise about what actually runs *inside the agent* versus what is *offline d
 | Component | What it is | Runs inside the agent? |
 |-----------|-----------|------------------------|
 | `system-prompt.md`, `.kiro/steering/*.md` | The behavioral contract the model reads | **Yes** — this is the live runtime |
-| `.kiro/hooks/*.kiro.hook` | Kiro-triggered agent prompts (file events / manual) | **Yes** — when Kiro is the client and the workspace is open |
-| Bee sync `scripts/*.ps1` | Windows Task Scheduler / login automation | **Yes** — but as OS processes, not inside the agent |
+| `.claude/agents/bee-processor.md`, `.claude/commands/process-bee-inbox.md` | Claude Code subagent + command — the live Bee consumer | **Yes** — when Claude Code is the client |
+| `.kiro/hooks/*.kiro.hook` | Kiro-triggered agent prompts (the Bee ones are deprecated/disabled) | Only if Kiro is the client; the Bee hooks no longer fire |
+| Bee sync + process `scripts/*.ps1` | Windows Task Scheduler / login automation | **Yes** — but as OS processes, not inside the agent |
 | `validators/` | TS CLI: schema / redaction / routing / idempotency checks | **No** — offline CLI you run against the vault; nothing calls it at agent runtime |
 | `observability/` | TS logging / tracing / metering / drift | **No** — only the offline eval runner imports it; it does not observe live agent turns |
 | `evals/` | TS harness calling the Claude API with fixtures | **No** — offline test suite; runs in CI against the shipped prompts, not during an agent turn |
@@ -370,7 +398,7 @@ The TS subsystems are useful **offline** (run them in CI or by hand to check the
 |------|--------|-----------|---------------|
 | CLAUDE.md + agent architecture | Built | This file — the system contract | Runtime (read by the agent) |
 | Daily Triage + GTD workflows | Built | `system-prompt.md` + `.kiro/steering/gtd-assistant.md` | Runtime |
-| Bee pipeline | Built | sync scripts + processing steering + hooks (auto + manual) | OS automation + runtime |
+| Bee pipeline | Built | sync scripts (Layer 1 + 2) + processing rules + Claude Code consumer (`bee-processor` subagent, `/process-bee-inbox`, `run-bee-process.ps1`); Kiro hooks deprecated | OS automation + Claude Code runtime |
 | Evals | Built (offline, CI-gated) | `evals/` — 5 suites (inbox, Bee, review, status, confirm-before-write) against the shipped prompts/hooks | Offline CLI + GitHub Actions (`.github/workflows/evals.yml`) |
 | Observability | Built (offline) | `observability/` — logs, traces, metering, drift | Offline; imported only by the eval runner |
 | Validators | Built (offline) | `validators/` — schema, redaction, routing, idempotency, continuation | Offline CLI; **not** invoked at agent runtime |

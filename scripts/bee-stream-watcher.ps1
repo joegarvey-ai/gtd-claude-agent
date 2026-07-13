@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Event-driven Bee watcher — listens to `bee stream` and triggers bee sync
+    Event-driven Bee watcher - listens to `bee stream` and triggers bee sync
     when conversations complete.
 
 .DESCRIPTION
@@ -45,7 +45,7 @@ $HashCache       = Join-Path $LogDir 'seen-hashes.json'   # convId -> last-fired
 $StuckFile       = Join-Path $LogDir 'stuck-captures.json'
 $DebounceSeconds = 30
 
-# Shared completeness gate (Test-BeeCaptureReady) — same file the scheduled sync uses,
+# Shared completeness gate (Test-BeeCaptureReady) - same file the scheduled sync uses,
 # so both layers apply an identical "COMPLETED + settled" rule and can't drift.
 . (Join-Path $PSScriptRoot 'bee-lib.ps1')
 
@@ -87,6 +87,8 @@ $pendingSync = $false
 $lastTriggerTime = [DateTime]::MinValue
 
 while ($true) {
+    $stderrSrcId = $null
+    $process = $null
     try {
         # Start bee stream as a child process and read stdout line-by-line
         $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -99,6 +101,19 @@ while ($true) {
 
         $process = [System.Diagnostics.Process]::Start($psi)
         Write-WatcherLog "CONNECTED stream pid=$($process.Id)"
+
+        # Drain stderr asynchronously. Two reasons: (1) if we never read the stderr
+        # pipe and bee stream writes to it, the OS pipe buffer fills and bee blocks on
+        # write -- a plausible cause of the exit=1 flapping. (2) When the stream DOES
+        # drop, we want the reason in the log instead of a bare exit code. We read
+        # stdout synchronously (below) and stderr via an event handler on the same
+        # process -- .NET supports mixing one sync + one async reader.
+        $stderrLines = [System.Collections.ArrayList]::Synchronized((New-Object System.Collections.ArrayList))
+        $stderrSrcId = "beeStderr_$($process.Id)"
+        Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -SourceIdentifier $stderrSrcId -MessageData $stderrLines -Action {
+            if (-not [string]::IsNullOrWhiteSpace($EventArgs.Data)) { [void]$Event.MessageData.Add($EventArgs.Data) }
+        } | Out-Null
+        $process.BeginErrorReadLine()
 
         while (-not $process.HasExited) {
             # Non-blocking-ish read: check for a line, also check debounce timer
@@ -146,7 +161,7 @@ while ($true) {
                         }
 
                         # Fire a sentinel only for READY captures (COMPLETED + settled) whose
-                        # content hash differs from the last hash we fired — same gate as Layer 1.
+                        # content hash differs from the last hash we fired - same gate as Layer 1.
                         $currentFiles = Get-ChildItem $VaultRaw -Recurse -File -Filter "*.md" -ErrorAction SilentlyContinue |
                             Where-Object { $_.FullName -match '\\conversations\\' }
                         $toFire = @()
@@ -160,7 +175,7 @@ while ($true) {
                             }
                         }
 
-                        # First-run guard — seed ready captures' current hashes, emit nothing.
+                        # First-run guard - seed ready captures' current hashes, emit nothing.
                         if (-not $cacheExisted) {
                             foreach ($f in $currentFiles) {
                                 if ((Test-BeeCaptureReady -Path $f.FullName).Status -eq 'ready') {
@@ -210,12 +225,27 @@ Process per the ``bee-processing`` steering rules and auto-write all outputs (ta
             }
         }
 
-        # Stream exited
+        # Stream exited. Give the async stderr reader a moment to flush, then log
+        # the exit code AND whatever bee wrote to stderr so the drop reason is visible.
+        Start-Sleep -Milliseconds 200
         $exitCode = $process.ExitCode
-        Write-WatcherLog "DISCONNECTED stream exit=$exitCode; reconnecting in 10s"
+        $reason = ''
+        if ($stderrLines -and $stderrLines.Count -gt 0) {
+            $reason = ' reason: ' + (($stderrLines | Select-Object -Last 5) -join ' | ')
+        }
+        Write-WatcherLog "DISCONNECTED stream exit=$exitCode;$reason reconnecting in 10s"
     }
     catch {
         Write-WatcherLog "ERROR $($_.Exception.Message); reconnecting in 10s"
+    }
+    finally {
+        # Tear down the stderr event subscription so subscriptions don't accumulate
+        # across reconnects (each loop registers a new one).
+        if ($stderrSrcId) {
+            Unregister-Event -SourceIdentifier $stderrSrcId -ErrorAction SilentlyContinue
+            Get-Event -SourceIdentifier $stderrSrcId -ErrorAction SilentlyContinue | Remove-Event -ErrorAction SilentlyContinue
+        }
+        if ($process) { try { $process.Dispose() } catch {} }
     }
 
     Start-Sleep -Seconds 10
