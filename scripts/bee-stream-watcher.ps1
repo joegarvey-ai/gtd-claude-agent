@@ -70,6 +70,31 @@ function Trim-WatcherLog {
     }
 }
 
+# Single-instance guard. The watcher is an infinite loop holding one `bee stream`
+# connection; a second copy would fight the first over the stream and double-fire syncs.
+# Whatever starts us (a BeeStreamWatcher keepalive task, an HKCU\Run login entry, or a
+# manual launch) MUST NOT be able to stack. Bail out if another powershell.exe is already
+# launched with -File pointing at THIS script. We match `-File ... <scriptname>` (with
+# optional surrounding quotes) rather than the bare filename, so a `-Command` invocation
+# that merely mentions the script (e.g. a status probe) is not mistaken for a watcher and
+# does not cause a real watcher to false-exit. Own PID is excluded.
+try {
+    $selfName = [System.IO.Path]::GetFileName($PSCommandPath)   # bee-stream-watcher.ps1
+    $filePattern = '-File\s+"?[^"]*' + [regex]::Escape($selfName)
+    $others = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop |
+        Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -and $_.CommandLine -match $filePattern })
+    if ($others.Count -gt 0) {
+        $otherPids = ($others | ForEach-Object { $_.ProcessId }) -join ', '
+        Write-WatcherLog "SKIP another watcher already running (pid=$otherPids); this instance (pid=$PID) exiting"
+        Trim-WatcherLog
+        exit 0
+    }
+} catch {
+    # If the instance check itself fails (e.g. CIM unavailable), don't block startup -
+    # log it and continue. Worst case we fall back to prior behavior.
+    Write-WatcherLog "WARN single-instance check failed: $($_.Exception.Message); continuing"
+}
+
 # Resolve the bee CLI
 $beeCmd = Join-Path $env:APPDATA 'npm\bee.cmd'
 if (-not (Test-Path $beeCmd)) {

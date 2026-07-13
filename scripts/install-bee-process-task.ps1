@@ -40,17 +40,22 @@ if (-not (Test-Path $launcherVbs)) {
     exit 1
 }
 
-# Sanity check: warn (don't fail) if WSL or claude isn't reachable yet.
+# Sanity check: warn (don't fail) if claude isn't reachable. Probe with the SAME PATH
+# prepend the runner uses, since a scheduled (non-interactive) WSL shell does not source
+# ~/.bashrc where claude is usually added to PATH.
+$binDirs = '$HOME/.toolbox/bin:$HOME/.local/bin:$HOME/bin:$HOME/.aim/mcp-servers'
 $wslOk = $false
+$probe = ''
 try {
-    $probe = & wsl.exe -e bash -lc 'command -v claude' 2>&1
+    $probe = & wsl.exe -e bash -lc "export PATH=`"$binDirs`:`$PATH`"; command -v claude" 2>&1
     if ($LASTEXITCODE -eq 0 -and $probe) { $wslOk = $true }
 } catch {}
 if ($wslOk) {
-    Write-Host "Verified: claude is on the WSL PATH ($($probe.Trim()))."
+    Write-Host "Verified: claude resolves in WSL ($(($probe | Select-Object -First 1).Trim()))."
 } else {
-    Write-Warning "Could not confirm 'claude' on the WSL PATH. The task will still install;"
-    Write-Warning "ensure `claude` runs inside `wsl.exe -e bash -lc 'claude --version'` before relying on it."
+    Write-Warning "Could not confirm 'claude' in WSL with the default bin dirs."
+    Write-Warning "The task will still install. If claude lives elsewhere, set \$BeeClaudeBinDirs"
+    Write-Warning "(colon-separated WSL dirs) in %LOCALAPPDATA%\bee-sync\bee-process-config.ps1."
 }
 
 # /Create /F overwrites; no pre-delete needed. wscript.exe "<launcher>" - one quoted path.

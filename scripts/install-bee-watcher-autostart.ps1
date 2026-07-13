@@ -9,9 +9,31 @@
 
     Reuses the vault path config at %LOCALAPPDATA%\bee-sync\config.ps1. If that
     config doesn't exist yet, this script will prompt for it (same as the
-    Layer 1 installer) and auto-detect the Kiro sentinel folder if present.
+    Layer 1 installer) and auto-detect the sentinel folder if present.
 
     The watcher itself loops forever with auto-reconnect logic.
+
+    TWO WAYS TO KEEP THE WATCHER RUNNING (pick one; do not run both):
+
+    1. HKCU\Run login entry (what this script installs). Simplest. The watcher
+       starts once when you log in. If it ever crashes mid-day, it stays down until
+       your next login.
+
+    2. A repeating "keepalive" scheduled task (more resilient; recommended if you
+       want mid-day crash recovery). Create a per-user task that runs the watcher
+       every few minutes; because the watcher self-guards against duplicates (it
+       exits immediately if another -File instance of itself is already running),
+       the repeated ticks are harmless no-ops while it is up, and they relaunch it
+       within minutes if it died. Windows reports SCHED_E_ALREADY_RUNNING (0x800710E0)
+       on the ticks that find it alive -- that is expected, not an error. Example:
+         schtasks /Create /TN BeeStreamWatcher /F /SC MINUTE /MO 5 `
+           /TR 'wscript.exe "<repo>\scripts\bee-watcher-silent.vbs"'
+       (Use a .vbs silent launcher, mirroring bee-sync-silent.vbs, to avoid a window
+       flash on each tick. This installer does not create the task; the command above
+       is the recipe.)
+
+    Either way the watcher's single-instance guard means you will never end up with
+    two live watchers fighting over the same `bee stream`.
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -72,6 +94,10 @@ Set-ItemProperty -Path $runKey -Name $valueName -Value $command
 
 Write-Host "Auto-start installed: HKCU\...\Run\$valueName"
 Write-Host "Starts at your next login."
+Write-Host ""
+Write-Host "Note: this is the login-entry approach. For mid-day crash recovery, you can"
+Write-Host "instead use a repeating keepalive scheduled task (see this script's header)."
+Write-Host "Do not run both. The watcher self-guards against duplicate instances either way."
 Write-Host ""
 Write-Host "Logs: $configDir\bee-watcher.log"
 Write-Host ""

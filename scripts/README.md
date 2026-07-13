@@ -1,17 +1,24 @@
 # Bee Sync Automation Scripts (Windows)
 
-Two-layer automation that keeps your Obsidian vault in sync with Bee lifelog captures and — optionally — auto-triggers Kiro processing via sentinel files.
+Two-layer automation that keeps your Obsidian vault in sync with Bee lifelog captures and writes a sentinel file per ready capture, which the Claude Code consumer then processes into notes.
 
 ## What's in here
 
 | Script | What it does |
 |--------|--------------|
-| `bee-sync-scheduled.ps1` | The Layer 1 worker. Runs `bee sync`, detects genuinely-changed conversations via content hash, writes sentinel files to trigger Kiro, and logs the result. Invoked by a scheduled task every 15 minutes. |
-| `bee-stream-watcher.ps1` | The Layer 2 worker. Listens to `bee stream --json` and triggers a targeted sync within ~30s of each conversation completing (30-second debounce). Auto-reconnects on stream drops. Writes the same sentinel files as Layer 1. |
-| `install-bee-sync-task.ps1` | One-shot installer for Layer 1. Prompts for your vault path on first run, auto-detects your Kiro workspace if present, creates a per-user scheduled task — no admin required. |
-| `install-bee-watcher-autostart.ps1` | One-shot installer for Layer 2. Reuses the Layer 1 config. Registers the watcher to auto-start at login via `HKCU\...\Run`. |
+| `bee-sync-scheduled.ps1` | The Layer 1 worker. Runs `bee sync`, detects genuinely-changed conversations via content hash, writes a sentinel file per ready capture, and logs the result. Invoked by a scheduled task every 15 minutes. |
+| `bee-stream-watcher.ps1` | The Layer 2 worker. Listens to `bee stream --json` and triggers a targeted sync within ~30s of each conversation completing (30-second debounce). Auto-reconnects on stream drops, drains stderr to log the drop reason, and **self-guards against duplicate instances** (exits immediately if another `-File` copy of itself is already running). Writes the same sentinel files as Layer 1. |
+| `bee-lib.ps1` | Shared completeness gate (`Test-BeeCaptureReady`), dot-sourced by both sync scripts so they can't drift. |
+| `run-bee-process.ps1` | The consumer runner. Invokes `claude -p '/process-bee-inbox'` inside WSL to drain pending sentinels into the vault. Cheap early-out when none pend. Replaces the retired Kiro auto-hook. |
+| `install-bee-sync-task.ps1` | One-shot installer for Layer 1. Prompts for your vault path on first run, creates the per-user `BeeSync15Min` task (via a `.vbs` silent launcher) — no admin required. |
+| `install-bee-watcher-autostart.ps1` | One-shot installer for Layer 2. Reuses the Layer 1 config. Registers the watcher to auto-start at login via `HKCU\...\Run` (its header also documents a repeating keepalive-task alternative for mid-day crash recovery — use one, not both). |
+| `install-bee-process-task.ps1` | One-shot installer for the consumer. Creates the per-user `BeeProcess30Min` task that runs `run-bee-process.ps1` every 30 minutes. Probes that `claude` resolves in WSL. |
+| `*-silent.vbs` | Silent launchers (`bee-sync-silent.vbs`, `bee-process-silent.vbs`) that start PowerShell hidden with single-level quoting, so a scheduled task never flashes a window. |
+| `apply-bee-outputs.template.ps1` | Legacy Kiro/MCP last-mile vault write-back. Unused by the Claude Code consumer (which writes to the vault directly); kept for Kiro users. |
 
-Both installers share a single config file at `%LOCALAPPDATA%\bee-sync\config.ps1`.
+All installers share a single config file at `%LOCALAPPDATA%\bee-sync\config.ps1`.
+
+> Processing now runs on **Claude Code**, not Kiro — the sentinels these scripts write are drained by the `bee-processor` subagent via `run-bee-process.ps1` / the `/process-bee-inbox` command. See the repo `CLAUDE.md` and `docs/bee-setup.md`.
 
 ## Why two layers?
 
@@ -20,11 +27,11 @@ Both installers share a single config file at `%LOCALAPPDATA%\bee-sync\config.ps
 
 Safe to run together. Most of the time Layer 2 writes new data first; Layer 1 runs as a no-op when nothing's changed.
 
-## Sentinel files: the Kiro hook bridge
+## Sentinel files: the consumer bridge
 
-The sync scripts don't just populate your vault's `_raw/` folder. They also drop a small sentinel file into `<your-workspace>/.kiro/bee-inbox/<conversation-id>.sentinel.md` whenever a genuinely new or updated conversation is detected (via SHA256 content comparison, not timestamps — since `bee sync` rewrites files every run even when content hasn't changed).
+The sync scripts don't just populate your vault's raw folder. They also drop a small sentinel file into `<your-workspace>/.kiro/bee-inbox/<conversation-id>.sentinel.md` whenever a genuinely new or updated conversation is detected (via SHA256 content comparison, not timestamps — since `bee sync` rewrites files every run even when content hasn't changed).
 
-Why this matters: Kiro `fileCreated` hooks only watch files inside your workspace folder. Your Obsidian vault lives elsewhere (usually iCloud or OneDrive). The sentinel file is the in-workspace marker that fires the hook. The hook reads the sentinel's frontmatter to find the raw file path in the vault, processes it, and deletes the sentinel.
+Why this matters: your Obsidian vault usually lives outside the workspace (iCloud or OneDrive). The sentinel is a tiny in-workspace marker pointing at the real raw file. The Claude Code consumer (`run-bee-process.ps1` / `/process-bee-inbox`) reads each sentinel's frontmatter to find the raw file, processes it, and deletes the sentinel once its outputs land. The `.kiro/bee-inbox/` path is retained for continuity (it is also where the legacy, now-disabled Kiro hooks looked).
 
 Sentinel frontmatter:
 
@@ -32,13 +39,13 @@ Sentinel frontmatter:
 ---
 source: bee-watcher                    # or bee-scheduled-sync
 conversation_id: 7775991
-raw_path: C:\...\_raw\conversations\2026-04-28\7775991.md
+raw_path: C:\...\Bee Raw\conversations\2026-04-28\7775991.md
 written_at: 2026-04-28T12:33:45-07:00
 auto_process: true
 ---
 ```
 
-If you're not using Kiro, sentinels still get written (they're harmless) but nothing processes them. Delete `.kiro/bee-inbox/*.sentinel.md` periodically or leave them — they're tiny.
+If nothing is draining the inbox (e.g. you haven't installed `BeeProcess30Min` and never run `/process-bee-inbox`), sentinels simply accumulate harmlessly. Run the command once to drain them, or delete `.kiro/bee-inbox/*.sentinel.md` — they're tiny.
 
 ## Setup
 

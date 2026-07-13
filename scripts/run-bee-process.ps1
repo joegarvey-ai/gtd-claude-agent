@@ -99,10 +99,20 @@ function ConvertTo-WslPath {
 $repoWsl  = ConvertTo-WslPath $RepoDirWin
 $vaultWsl = ConvertTo-WslPath $VaultRootWin
 
-# Build the bash command run inside WSL. cd into the repo so .claude/ is discovered; add
-# the vault dir so the agent may write outside the repo. Single-quote the prompt.
+# Resolve claude's PATH. A scheduled task launches WSL with a NON-interactive shell, so
+# ~/.bashrc (which is where the toolbox/npm installs usually add claude to PATH) is NOT
+# sourced -- `bash -lc 'claude ...'` would fail with "command not found". Prepend the
+# common install bins so claude resolves regardless. Override via $BeeClaudeBinDirs in
+# bee-process-config.ps1 (colon-separated WSL dirs) if claude lives elsewhere.
+if (-not $BeeClaudeBinDirs) {
+    $BeeClaudeBinDirs = '$HOME/.toolbox/bin:$HOME/.local/bin:$HOME/bin:$HOME/.aim/mcp-servers'
+}
+
+# Build the bash command run inside WSL. Prepend the bin dirs, cd into the repo so .claude/
+# is discovered, add the vault dir so the agent may write outside the repo, and redirect
+# stdin from /dev/null so claude does not wait on stdin in a headless run.
 $addDir = if ($vaultWsl) { " --add-dir '$vaultWsl'" } else { '' }
-$bashCmd = "cd '$repoWsl' && claude -p '/process-bee-inbox' --permission-mode acceptEdits$addDir"
+$bashCmd = "export PATH=`"$BeeClaudeBinDirs`:`$PATH`"; cd '$repoWsl' && claude -p '/process-bee-inbox' --permission-mode acceptEdits$addDir < /dev/null"
 
 $output = & wsl.exe -e bash -lc $bashCmd 2>&1 | Out-String
 $exit = $LASTEXITCODE
