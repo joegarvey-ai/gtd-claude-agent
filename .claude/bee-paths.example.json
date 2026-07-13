@@ -1,0 +1,10 @@
+{
+  "_comment": "Example path map for the Bee consumer. Copy to bee-paths.local.json (gitignored) and set the vault-relative output folders for YOUR vault. The bee-processor agent reads bee-paths.local.json at runtime and falls back to these bracketed defaults if it is absent. Vault root is derived from each sentinel's raw_path (the part before raw_subpath), so no absolute path is stored here.",
+  "raw_subpath": "[RAW_SUBPATH e.g. 05 Reference/Bee/_raw]",
+  "tasks_dir": "[TASKS_DIR e.g. 00 Inbox/Bee]",
+  "meeting_notes_dir": "[MEETING_NOTES_DIR e.g. 05 Reference/Meeting Notes]",
+  "people_dir": "[PEOPLE_DIR e.g. People]",
+  "voice_observations_file": "[VOICE_FILE e.g. 05 Reference/Writing Style Guide & Rules.md]",
+  "collapse_work_personal_split": true,
+  "voice_contract": "Describe your Voice Observations file's append contract here (where the append marker is, what is allowed). Skip the voice output entirely if no genuinely new pattern emerged."
+}

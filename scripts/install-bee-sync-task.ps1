@@ -7,24 +7,38 @@
     Creates a user-level scheduled task that runs bee-sync-scheduled.ps1 every
     15 minutes while you're logged in. No UAC elevation required.
 
+    The task launches the sync through bee-sync-silent.vbs (via wscript.exe) rather
+    than calling powershell.exe directly. The .vbs wrapper starts PowerShell with a
+    hidden window and no console flash, and it keeps the task action to a single
+    level of quoting (wscript.exe "<path>\bee-sync-silent.vbs") -- nested quotes in
+    a schtasks /TR string are a common cause of a task that registers fine but never
+    actually runs its target.
+
     On first run, prompts for your Obsidian vault's `_raw` path (and, if this
     folder is inside a Kiro workspace, automatically detects the sentinel
-    directory for the Kiro hook). Writes both to
+    directory for the Claude Code / Kiro consumer). Writes both to
     %LOCALAPPDATA%\bee-sync\config.ps1 so Layer 1 and Layer 2 share config.
 
 .NOTES
     Uses schtasks.exe (not Register-ScheduledTask) for broader compatibility
-    on locked-down machines.
+    on locked-down machines. Native commands (schtasks/wscript) are checked via
+    $LASTEXITCODE with $ErrorActionPreference left at 'Continue' -- 'Stop' does
+    not trap native-exe exit codes and would give a false sense of safety.
 #>
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
-$taskName   = 'BeeSync15Min'
-$scriptDir  = Split-Path -Parent $PSCommandPath
-$syncScript = Join-Path $scriptDir 'bee-sync-scheduled.ps1'
+$taskName    = 'BeeSync15Min'
+$scriptDir   = Split-Path -Parent $PSCommandPath
+$syncScript  = Join-Path $scriptDir 'bee-sync-scheduled.ps1'
+$launcherVbs = Join-Path $scriptDir 'bee-sync-silent.vbs'
 
 if (-not (Test-Path $syncScript)) {
     Write-Error "Cannot find $syncScript."
+    exit 1
+}
+if (-not (Test-Path $launcherVbs)) {
+    Write-Error "Cannot find $launcherVbs (the silent launcher the task runs). It ships alongside this installer."
     exit 1
 }
 
@@ -51,21 +65,21 @@ if (-not (Test-Path $configFile)) {
         Write-Warning "Continuing anyway -- create the folder in Obsidian before the first scheduled run."
     }
 
-    # Auto-detect Kiro workspace root. If this installer lives at <workspace>/scripts/,
-    # the workspace root is one level up. If the user is running from a Kiro-enabled
-    # workspace with a .kiro folder, point sentinels at <workspace>/.kiro/bee-inbox/.
+    # Auto-detect the workspace root. If this installer lives at <workspace>/scripts/,
+    # the workspace root is one level up. If there's a .kiro folder, point sentinels at
+    # <workspace>/.kiro/bee-inbox/ -- the Claude Code consumer (and the legacy Kiro hook)
+    # both read sentinels from there.
     $workspaceRoot = Split-Path -Parent $scriptDir
     $kiroWorkspaceDir = Join-Path $workspaceRoot '.kiro'
     $sentinelDir = ''
     if (Test-Path $kiroWorkspaceDir) {
         $sentinelDir = Join-Path $kiroWorkspaceDir 'bee-inbox'
         New-Item -ItemType Directory -Force -Path $sentinelDir | Out-Null
-        Write-Host "Detected Kiro workspace at: $workspaceRoot"
+        Write-Host "Detected workspace at: $workspaceRoot"
         Write-Host "Sentinel directory: $sentinelDir"
     } else {
-        Write-Host "No Kiro workspace detected (no .kiro/ folder one level up)."
-        Write-Host "Sentinel-based auto-processing via Kiro hook will not work."
-        Write-Host "You can still use the sync scripts -- the Kiro auto-processing just won't fire."
+        Write-Host "No .kiro/ folder detected one level up."
+        Write-Host "Sentinels will default to <workspace>/.kiro/bee-inbox/ at sync time."
     }
 
     $configLines = @(
@@ -80,21 +94,29 @@ if (-not (Test-Path $configFile)) {
     Write-Host "Config saved: $configFile"
 }
 
-# Remove prior registration (silent)
-& schtasks.exe /Delete /TN $taskName /F *> $null
-
-$command = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $syncScript + '"'
+# Register the task. /Create /F overwrites any existing task of the same name, so no
+# pre-delete is needed. /TR runs the .vbs launcher through wscript.exe -- a single
+# quoted path, no nested quotes.
+$command = 'wscript.exe "' + $launcherVbs + '"'
 $startTime = (Get-Date).AddMinutes(1).ToString('HH:mm')
 
 $result = & schtasks.exe /Create /TN $taskName /TR $command /SC MINUTE /MO 15 /ST $startTime /F 2>&1
+$createExit = $LASTEXITCODE
 Write-Host $result
+
+if ($createExit -ne 0) {
+    Write-Error "schtasks /Create failed (exit $createExit). Task not installed."
+    exit 1
+}
+
 Write-Host ""
 Write-Host "Installed: $taskName"
-Write-Host "Runs every 15 minutes."
+Write-Host "Runs every 15 minutes via: $command"
 Write-Host "Logs: $configDir\bee-sync.log"
 Write-Host ""
-Write-Host "Smoke test (run it now):"
+Write-Host "Smoke test (run it now, then check the log for a fresh 'OK sync completed' line):"
 Write-Host "    schtasks /Run /TN $taskName"
+Write-Host "    Get-Content `"$configDir\bee-sync.log`" -Tail 5"
 Write-Host ""
 Write-Host "Uninstall:"
 Write-Host "    schtasks /Delete /TN $taskName /F"

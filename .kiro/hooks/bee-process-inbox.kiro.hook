@@ -1,7 +1,7 @@
 {
-  "enabled": true,
-  "name": "Process Bee Inbox (manual)",
-  "description": "Manually process ALL pending Bee sentinels in one pass. This is the reliable fallback for the auto-process hook: click it (or say 'process my Bee inbox') and it reads every *.sentinel.md in .kiro/bee-inbox/, processes each per the bee-processing steering, writes outputs to the vault, and deletes each sentinel only after its outputs are written. Use this whenever sentinels have piled up or the auto-hook didn't fire.",
+  "enabled": false,
+  "name": "Process Bee Inbox (manual) (DEPRECATED - moved to Claude Code)",
+  "description": "DEPRECATED. Replaced by the Claude Code /process-bee-inbox command (.claude/commands/process-bee-inbox.md), which drives the bee-processor subagent over all pending sentinels in one pass. The maintainer moved off Kiro to Claude Code, so this hook no longer fires. Kept here, disabled, only as a reference for anyone still running this pipeline under Kiro. Original behavior: userTriggered batch drain of every *.sentinel.md in .kiro/bee-inbox/, per the bee-processing steering, deleting each sentinel after its outputs are written.",
   "version": "1",
   "when": {
     "type": "userTriggered"

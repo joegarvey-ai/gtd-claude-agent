@@ -44,6 +44,9 @@ Technical_Program_Manager_Role_Guideline*.docx
 # Local steering overrides (personalized, contains employer-specific content)
 .kiro/steering/gtd-assistant.md
 
+# Local steering with the user's real vault path + personal folder/people names
+.kiro/steering/obsidian-vault.md
+
 # Local specs (contain employer-specific strategy/team content)
 .kiro/specs/adt-decision-framework/
 
@@ -51,6 +54,11 @@ Technical_Program_Manager_Role_Guideline*.docx
 .kiro/bee-inbox/_staging/
 .kiro/bee-inbox/_output/
 .kiro/bee-inbox/*.sentinel.md
+
+# Claude Code Bee consumer: local (personalized) vault path map. The .example.json
+# is tracked; the .local.json holds this user's real vault-relative folders.
+.claude/bee-paths.local.json
+.claude/settings.local.json
 
 # Kiro hook with employer-specific Taskei config
 .kiro/hooks/weekly-status-update-team.kiro.hook

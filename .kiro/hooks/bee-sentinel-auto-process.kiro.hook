@@ -1,7 +1,7 @@
 {
-  "enabled": true,
-  "name": "Bee Sentinel Auto-Process",
-  "description": "Best-effort automatic processing: fires when the sync writes a new sentinel to .kiro/bee-inbox/. Processes the capture per the bee-processing steering and deletes the sentinel when done. Kiro agent hooks only fire while the workspace is open and can miss background writes — if sentinels pile up, run the 'Process Bee Inbox (manual)' hook, which is the reliable fallback.",
+  "enabled": false,
+  "name": "Bee Sentinel Auto-Process (DEPRECATED - moved to Claude Code)",
+  "description": "DEPRECATED. The maintainer moved off Kiro to Claude Code; this hook no longer fires. Its job is now done by the Claude Code consumer: the `bee-processor` subagent (.claude/agents/bee-processor.md), run on a schedule by scripts/run-bee-process.ps1 (installed via scripts/install-bee-process-task.ps1) or manually via the /process-bee-inbox command. Kept here, disabled, only as a reference for anyone still running this pipeline under Kiro. Original behavior: best-effort auto-processing on fileCreated in .kiro/bee-inbox/, per the bee-processing steering, deleting the sentinel when done.",
   "version": "3",
   "when": {
     "type": "fileCreated",
