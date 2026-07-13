@@ -2,7 +2,7 @@
 
 An open-source system that turns an AI assistant into a personal chief of staff — one that reads your notes, triages your email, processes your meetings, and manages your task system. You stay in control; it handles the admin work.
 
-Built on the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), so it works with any MCP-capable assistant: [Claude Desktop](https://claude.ai/download), [Kiro](https://kiro.dev), or whatever comes next.
+Built on the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/), so it works with any MCP-capable assistant: [Claude Desktop](https://claude.ai/download), [Claude Code](https://www.anthropic.com/claude-code), [Kiro](https://kiro.dev), or whatever comes next. The meeting pipeline's background automation runs on Claude Code.
 
 ---
 
@@ -56,11 +56,11 @@ You don't need to be technical. The setup guides assume no coding experience. Yo
 
 | Capability | What it does | Docs |
 |-----------|-------------|------|
-| **Meeting pipeline** | Wearable (Bee) captures → structured meeting notes + stack-ranked tasks + evolving People bios, with privacy redaction | [docs/bee-setup.md](docs/bee-setup.md) |
+| **Meeting pipeline** | Wearable (Bee) captures → structured meeting notes + stack-ranked tasks + evolving People bios, with privacy redaction. Processing runs as a Claude Code subagent (`/process-bee-inbox`) plus scheduled sync + runner scripts | [docs/bee-setup.md](docs/bee-setup.md) |
 | **Weekly status automation** | Reads tasks from your PM tool, drafts status updates per task, writes them back after approval | [`.kiro/hooks/weekly-status-update.kiro.hook`](.kiro/hooks/weekly-status-update.kiro.hook) |
 | **Enterprise tools** | Corporate email (Outlook), Slack in draft-mode, internal wikis via WSL — with graduated trust levels | [docs/enterprise-mcp-patterns.md](docs/enterprise-mcp-patterns.md) |
 | **Operational frameworks** | Generate scoring models, escalation protocols, RACI charts, and capacity planning systems from structured requirements | [`.kiro/specs/operational-framework-example/`](.kiro/specs/operational-framework-example/) |
-| **Vault sync** | Write-back script for when your Obsidian vault lives outside the workspace (iCloud, OneDrive, Dropbox) | [`scripts/apply-bee-outputs.template.ps1`](scripts/apply-bee-outputs.template.ps1) |
+| **Outside-workspace vaults** | The Bee consumer writes directly to a vault that lives outside the workspace (iCloud, OneDrive, Dropbox) — no staging step needed. Output folders are set in a local path map | [`.claude/bee-paths.example.json`](.claude/bee-paths.example.json) |
 
 ---
 
@@ -69,7 +69,7 @@ You don't need to be technical. The setup guides assume no coding experience. Yo
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     Your AI Assistant                       │
-│              (Claude Desktop, Kiro, or any MCP client)      │
+│         (Claude Desktop, Claude Code, Kiro, any client)     │
 ├─────────────────────────────────────────────────────────────┤
 │                   Model Context Protocol                    │
 ├──────────┬──────────┬──────────┬──────────┬─────────────────┤
@@ -82,7 +82,7 @@ You don't need to be technical. The setup guides assume no coding experience. Yo
 
 **The system prompt** tells the assistant how to think about your system: what the folder structure means, how to process inbox items, how to run a weekly review, and what your communication preferences are.
 
-**Kiro hooks** (optional) add background automation: processing meeting captures the moment they land, running scheduled syncs, or drafting status updates on a trigger.
+**Background automation** (optional) keeps the meeting pipeline running unattended. On Claude Code, a `bee-processor` subagent drains new captures into notes, driven by the `/process-bee-inbox` command or a scheduled runner; PowerShell scheduled tasks handle the Bee sync itself. (The older Kiro hooks that once did this are retired; the `weekly-status-update` Kiro hook is unrelated and still available.)
 
 **The human-in-the-loop rule** means the assistant gathers context freely (reads are auto-approved) but always asks before taking action that's visible to others (sends, posts, deletes require your confirmation).
 
@@ -119,7 +119,7 @@ People/                    ← Living bios of people you work with
 
 | Tool | Purpose | Cost |
 |------|---------|------|
-| [Claude Desktop](https://claude.ai/download) or [Kiro](https://kiro.dev) | The AI assistant that reads the system prompt and connects to your tools | Claude Pro: $20/month |
+| [Claude Desktop](https://claude.ai/download), [Claude Code](https://www.anthropic.com/claude-code), or [Kiro](https://kiro.dev) | The AI assistant that reads the system prompt and connects to your tools (Claude Code also runs the meeting-pipeline automation) | Claude Pro: $20/month |
 | [Obsidian](https://obsidian.md/) | Local markdown notes — your GTD vault | Free |
 | [Node.js](https://nodejs.org/) | Runs the MCP server that connects the assistant to your vault | Free |
 
@@ -197,8 +197,10 @@ The system prompt is designed to be forked. Key files to make yours:
 | File | What to customize |
 |------|-------------------|
 | `system-prompt.md` | Your name, vault path, communication preferences, domain-specific context |
-| `system-prompt-bee-processor.md` | Your name, vault path (if using Bee) |
-| `.kiro/steering/bee-processing.md` | Your employer name for meeting note paths |
+| `.claude/bee-paths.local.json` | Your vault-relative Bee output folders (copy from `.claude/bee-paths.example.json`; gitignored). This is how the Claude Code consumer knows where to write |
+| `.claude/agents/bee-processor.md` | The Bee consumer's rules — usually leave as-is; edit only to change processing behavior |
+| `system-prompt-bee-processor.md` | Your name, vault path — only if you run Bee via a Claude Desktop project instead of the Claude Code consumer |
+| `.kiro/steering/bee-processing.md` | The shared redaction/output rules (used by the Claude Code consumer and, if you still run it, Kiro) |
 | `.kiro/hooks/weekly-status-update.kiro.hook` | Your PM tool, project ID, team name |
 
 See [docs/customizing-your-system-prompt.md](docs/customizing-your-system-prompt.md) for detailed guidance.
