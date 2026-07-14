@@ -40,6 +40,10 @@ sentinel file after its outputs are written.
   (`sed -n '1,12p'`, `grep -n '^##'`) to decide scope, but read the transcript before
   drafting notes.
 
+## Load context first (do not re-derive)
+
+Read `context/context-pack.local.md` if it exists, else `context/context-pack.md`, for the user's identity and voice rules. Do not restate voice rules inline; the pack is the single source. (The pack is generic in the tracked file and personalized in the gitignored `.local` override, mirroring the `.claude/bee-paths.*` pattern.)
+
 ## Output paths (read the path map first)
 
 Vault output folders differ per user, so they are NOT hardcoded here. Read the path map
@@ -277,8 +281,3 @@ pattern-only observation emerged (the common case).
   reference the existing file rather than duplicating.
 - **Hard-to-redact content** - err toward excluding from People and Meeting notes; keep
   action items unless they themselves are sensitive.
-
-## Voice
-
-No em dashes, no contrast hooks ("It's not X, it's Y"), no defensive framing. Write plainly.
-Be direct in your summary; do not recap meeting contents back to the user.

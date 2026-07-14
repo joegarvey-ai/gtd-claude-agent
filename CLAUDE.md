@@ -301,6 +301,22 @@ Unlike the old Kiro/MCP path, Claude Code writes directly to the vault, so there
 `_output/` staging or `apply-bee-outputs` last-mile step. The close-the-loop guarantee is
 the same: a sentinel is deleted only after its outputs land.
 
+### The event seam is single-consumer today (conditional generalization)
+
+The event seam is `.kiro/bee-inbox/*.sentinel.md` because Bee is the only event-driven
+consumer right now. **When a second event-driven consumer is added**, generalize the seam to
+`.agent-inbox/<consumer>/*.sentinel.md` (one subfolder per consumer) and update the four
+sentinel-dir defaults at that time: `scripts/bee-sync-scheduled.ps1` (`$SentinelDir`),
+`scripts/bee-stream-watcher.ps1` (`$SentinelDir`), `scripts/run-bee-process.ps1`
+(`$sentinelDir`), and `scripts/install-bee-sync-task.ps1`. Until then, do NOT move it;
+moving it now would break the running `BeeProcess30Min` task for zero benefit.
+
+At the same time the seam is generalized, extract the copy-pasted sentinel-writing heredoc
+(duplicated in `bee-sync-scheduled.ps1` and `bee-stream-watcher.ps1`, both still carrying the
+stale instruction line "Process per the `bee-processing` steering rules") into a shared
+`bee-lib.ps1` helper and drop that stale line. This is the future step, not a change to make
+now. Each of the four sites carries a `# CONDITIONAL` comment pointing back here.
+
 ### Retired Kiro hooks
 
 `.kiro/hooks/bee-sentinel-auto-process.kiro.hook` and `bee-process-inbox.kiro.hook` are
