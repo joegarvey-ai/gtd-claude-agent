@@ -113,6 +113,7 @@ The Obsidian vault is the shared state between all agents. These rules are invio
 | `05 Reference/[EMPLOYER]/Meeting Notes/` | Cleaned work meeting summaries | Bee Processor |
 | `06 Waiting For/` | Blocked on someone else | GTD Assistant (after user approval) |
 | `People/` | Structured bios of key people | Bee Processor |
+| `05 Reference/Calendar Prep/` | Per-meeting prep notes for upcoming meetings | Calendar Prep (Tier 0; reference scaffold from docs/add-an-agent.md, not yet a live job) |
 
 **One-writer-per-folder invariant:** exactly one agent role writes to each output folder. Consumers read across folders freely; no two agents write the same folder. If a new agent needs a folder another agent owns, redesign, do not co-own. (`00 Inbox/` is the one shared intake: the user drops raw captures and the Bee Processor writes only into its own `00 Inbox/Bee/` subfolder, so ownership is still unambiguous per leaf folder.)
 

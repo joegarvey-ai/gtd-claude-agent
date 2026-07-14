@@ -7,6 +7,7 @@ const suites = [
   { name: "Weekly Review", script: "suites/weekly-review.ts" },
   { name: "Status Updates", script: "suites/status-updates.ts" },
   { name: "Confirm Before Write", script: "suites/confirm-before-write.ts" },
+  { name: "Calendar Prep", script: "suites/calendar-prep.ts" },
 ];
 
 console.log("╔══════════════════════════════════════════╗");
