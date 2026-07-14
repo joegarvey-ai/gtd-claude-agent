@@ -88,6 +88,36 @@ You don't need to be technical. The setup guides assume no coding experience. Yo
 
 ---
 
+## Using it day to day
+
+Once you're set up, the first thing to read is **[docs/USAGE.md](docs/USAGE.md)**: a day-in-the-life walkthrough, a copy-paste prompt library, the top workflows end to end, and what to expect. It answers the question setup guides never do, which is what do I actually type?
+
+A few to get you started:
+
+```
+start my day
+```
+Runs your full morning triage (email, calendar, chat) into one dated plan.
+
+```
+process my inbox
+```
+Routes each captured item to the right GTD folder, on your confirmation.
+
+```
+run my weekly review
+```
+Flags stale items, missing next actions, and commitments that never became tasks.
+
+```
+what do you know about my system and how I work?
+```
+A good first prompt after setup: confirms the assistant read your configuration.
+
+Full library and worked use cases: **[docs/USAGE.md](docs/USAGE.md)**.
+
+---
+
 ## The methodology
 
 The kit is structured around [Getting Things Done (GTD)](https://gettingthingsdone.com/) — a system for managing commitments without keeping them in your head. You don't need to have read the book. Here's what matters:
