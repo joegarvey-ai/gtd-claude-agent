@@ -73,6 +73,7 @@ if (-not (Test-Path $configFile)) {
     $kiroWorkspaceDir = Join-Path $workspaceRoot '.kiro'
     $sentinelDir = ''
     if (Test-Path $kiroWorkspaceDir) {
+        # CONDITIONAL: generalize to .agent-inbox/<consumer>/ when a 2nd event consumer appears (see CLAUDE.md)
         $sentinelDir = Join-Path $kiroWorkspaceDir 'bee-inbox'
         New-Item -ItemType Directory -Force -Path $sentinelDir | Out-Null
         Write-Host "Detected workspace at: $workspaceRoot"

@@ -71,6 +71,7 @@ if (Test-Path $SyncConfig) {
 }
 
 # Cheap early-out: nothing to do if no sentinels are pending. Saves spinning up Claude.
+# CONDITIONAL: generalize to .agent-inbox/<consumer>/ when a 2nd event consumer appears (see CLAUDE.md)
 $sentinelDir = Join-Path $RepoDirWin '.kiro\bee-inbox'
 $pending = @()
 if (Test-Path $sentinelDir) {

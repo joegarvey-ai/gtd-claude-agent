@@ -46,6 +46,7 @@ try { Copy-Item -Path $ConfigFile -Destination $ConfigBak -Force -ErrorAction Si
 # the Kiro hook expects sentinels under <workspace>/.kiro/bee-inbox/. Default here
 # assumes the script is inside <workspace>/scripts/ and walks one level up.
 if (-not $SentinelDir) {
+    # CONDITIONAL: generalize to .agent-inbox/<consumer>/ when a 2nd event consumer appears (see CLAUDE.md)
     $SentinelDir = Join-Path (Split-Path -Parent $PSScriptRoot) '.kiro\bee-inbox'
 }
 

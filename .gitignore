@@ -60,5 +60,10 @@ Technical_Program_Manager_Role_Guideline*.docx
 .claude/bee-paths.local.json
 .claude/settings.local.json
 
+# Local (personalized) agent context pack. The tracked context/context-pack.md is
+# generic and [BRACKETED]; this .local copy holds the user's real identity/details.
+# Agents read the .local override if present, else the tracked generic pack.
+context/context-pack.local.md
+
 # Kiro hook with employer-specific Taskei config
 .kiro/hooks/weekly-status-update-team.kiro.hook
