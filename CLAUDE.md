@@ -71,7 +71,7 @@ This system has distinct agent roles. Each role has a defined scope, defined inp
 - Make judgments about task priority beyond stack-ranking within a single meeting
 - Process anything outside `_raw/` — it's a single-purpose pipeline
 
-**Handoff:** Bee Processor writes to `00 Inbox/Bee/`. GTD Assistant picks up those files during inbox processing. No direct communication between agents — the vault IS the interface.
+**Handoff:** Bee Processor writes to `00 Inbox/Bee/`. GTD Assistant picks up those files during inbox processing. No direct communication between agents; the vault IS the interface, governed by the Information-sharing rules below.
 
 ---
 
@@ -113,6 +113,32 @@ The Obsidian vault is the shared state between all agents. These rules are invio
 | `05 Reference/[EMPLOYER]/Meeting Notes/` | Cleaned work meeting summaries | Bee Processor |
 | `06 Waiting For/` | Blocked on someone else | GTD Assistant (after user approval) |
 | `People/` | Structured bios of key people | Bee Processor |
+
+**One-writer-per-folder invariant:** exactly one agent role writes to each output folder. Consumers read across folders freely; no two agents write the same folder. If a new agent needs a folder another agent owns, redesign, do not co-own. (`00 Inbox/` is the one shared intake: the user drops raw captures and the Bee Processor writes only into its own `00 Inbox/Bee/` subfolder, so ownership is still unambiguous per leaf folder.)
+
+### Information-sharing rules (how agents cooperate without coupling)
+
+These rules let new agents join without silently recoupling the system. They apply to every agent in every repo that writes to this vault.
+
+**The core rule: share the noun, not the verb.** Share the noun (the finished artifact) and the fact-that-it-changed (a sentinel). Never share the verb (another agent's in-progress reasoning) or the cursor (how far an agent has read its own source). Agent B reads Agent A's OUTPUTS, never Agent A's STATE (`last-scan.json`, `seen-hashes.json`, the path maps). The moment B reads A's cursor, the two are coupled and drift begins.
+
+**Three coordination mechanisms, and nothing else:**
+
+| Layer | Mechanism | What is shared | Kept local (never read by another agent) |
+|-------|-----------|----------------|-------------------------------------------|
+| Identity | Per-repo `context/context-pack.md` | Who Joe is, voice, safety tiers | (nothing; it is read-only shared truth) |
+| Artifacts | Vault folders + provenance frontmatter | The finished note (the noun) | The producer's transform logic (the verb) |
+| Triggers | A sentinel drop (or a status-flag flip) | The fact that an artifact changed | The producer's read cursor / scan state |
+
+**Provenance frontmatter contract.** Every artifact an agent writes carries `type:`, `date:`, `source: <agent>`, and a dedup key in its frontmatter. Apply this going forward only; do not backfill existing artifacts. The Bee outputs already carry `source: bee` + `bee_conversation_id` (see the frontmatter schema below) as the reference shape.
+
+**Triggers decision-rule (pick the loosest mechanism that meets the latency need):**
+
+1. **Poll-by-frontmatter (default, zero coupling):** the consumer globs the vault for `type: X` artifacts newer than its last run. No producer-side wiring, no shared state.
+2. **Status-flag flip (medium):** the producer sets `status: needs_review` in frontmatter; the consumer flips it to `done` after acting. One shared field, still no shared cursor.
+3. **Sentinel drop (tightest):** the producer drops a sentinel file the consumer drains. Reserve this for near-real-time handoffs (the Bee pipeline is the one case that earns it).
+
+Do not reach for a sentinel unless latency actually hurts. See "When adding new hooks" for how this rule governs new triggers.
 
 ### Immutability rules
 
@@ -354,9 +380,10 @@ personal-assistant-kit/
 
 ### When adding new hooks
 
+- Choose the trigger mechanism per the triggers decision-rule in "Information-sharing rules" above: poll-by-frontmatter first, then a status-flag flip, and a sentinel drop only when latency actually hurts.
 - Define the trigger clearly (fileCreated, userTriggered, scheduled)
 - Document what the hook reads, what it writes, and what it deletes
-- Respect the vault contract — don't write to folders outside the hook's designated scope
+- Respect the vault contract and the one-writer-per-folder invariant; don't write to folders outside the hook's designated scope, and don't write to a folder another agent already owns
 - Add a corresponding entry to this CLAUDE.md's hooks table
 
 ### When adding new MCP servers
