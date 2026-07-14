@@ -36,6 +36,7 @@ if (-not (Test-Path $ConfigFile)) {
 # Default SentinelDir if not set in config. When the script lives inside a Kiro
 # workspace at <workspace>/scripts/, default to <workspace>/.kiro/bee-inbox/.
 if (-not $SentinelDir) {
+    # CONDITIONAL: generalize to .agent-inbox/<consumer>/ when a 2nd event consumer appears (see CLAUDE.md)
     $SentinelDir = Join-Path (Split-Path -Parent $PSScriptRoot) '.kiro\bee-inbox'
 }
 
